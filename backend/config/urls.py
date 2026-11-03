@@ -10,7 +10,7 @@ from orders.views import MeView, OrderViewSet
 from payments.views import PublicPaymentMethodViewSet
 from comments.views import MyCommentView, ProductCommentsView
 from orders.google import GoogleLoginView
-from orders.login import AppleLoginView, ChangePhoneView, OfferView, SendCodeView, VerifyCodeView
+from orders.login import ChangePhoneView, OfferView, SendCodeView, VerifyCodeView
 from orders.store import PublicStoreSettingsView
 
 router = DefaultRouter()
@@ -33,7 +33,6 @@ urlpatterns = [
     path("api/auth/me/", MeView.as_view()),
     path("api/auth/phone/", ChangePhoneView.as_view()),
     path("api/auth/google/", GoogleLoginView.as_view()),
-    path("api/auth/apple/", AppleLoginView.as_view()),
     path("api/auth/code/send/", SendCodeView.as_view()),
     path("api/auth/code/verify/", VerifyCodeView.as_view()),
     path("api/offer/", OfferView.as_view()),

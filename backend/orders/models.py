@@ -153,7 +153,6 @@ class CustomerProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     phone = models.CharField("Telefon", max_length=20, blank=True)
     address = models.CharField("Yetkazish manzili", max_length=255, blank=True)
-    apple_id = models.CharField("Apple ID (sub)", max_length=255, blank=True, db_index=True)
 
     class Meta:
         verbose_name = "Mijoz profili"

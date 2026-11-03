@@ -43,7 +43,7 @@ export function StoreProvider({ children }) {
     if (tokens.access) api('/auth/me/').then(setUser).catch(() => tokens.clear())
   }, [])
 
-  // Token qaytaradigan kirish (SMS kod, Google, Apple); javobda created: yangi hisob ochildimi
+  // Token qaytaradigan kirish (SMS kod, Google); javobda created: yangi hisob ochildimi
   const tokenLogin = useCallback(async (path, body) => {
     const r = await api(path, { method: 'POST', body, auth: false })
     tokens.set(r.access, r.refresh)

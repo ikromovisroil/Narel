@@ -240,8 +240,6 @@ export default {
   'Kodni qayta yuborish: {s} soniya': 'Повторная отправка через {s} сек.',
   'Kodni qayta yuborish': 'Отправить код повторно',
   'Yopish': 'Закрыть',
-  'Apple orqali kirish': 'Войти через Apple',
-  "Apple orqali kirib bo'lmadi.": 'Не удалось войти через Apple.',
   'Yangilangan: {date}': 'Обновлено: {date}',
   'Oferta matni hali kiritilmagan.': 'Текст оферты ещё не добавлен.',
   'yoki': 'или',

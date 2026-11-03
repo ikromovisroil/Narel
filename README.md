@@ -90,15 +90,13 @@ kiritadi.
 ## Mijoz kirishi: telefon + SMS kod
 
 Mijozlarda login/parol yo'q — telefon raqami va SMS kod bilan kiradi (raqam yangi bo'lsa hisob o'zi ochiladi),
-yoki Google/Apple orqali. Login va parol faqat xodimlar (admin panel) uchun.
+yoki Google orqali. Login va parol faqat xodimlar (admin panel) uchun.
 
 - **SMS (Eskiz.uz)**: `backend/.env` da `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`, `ESKIZ_FROM`. Bo'sh bo'lsa va `DEBUG=True` —
   test rejimi: SMS yuborilmaydi, kod server konsolida va kirish oynasida ko'rinadi. `DEBUG=False` da SMS sozlanmasa kod yuborilmaydi.
   Eskiz'da SMS matni shabloni tasdiqlangan bo'lishi kerak: `Narel: kirish kodi {kod}. Hech kimga bermang.`
 - **Cheklovlar**: kod 2 daqiqa amal qiladi, qayta yuborish 60 soniyadan keyin, 5 ta xato urinishdan keyin kod bekor,
   bir raqamga kuniga 10 ta SMS.
-- **Apple**: Apple Developer -> Identifiers -> Services ID (Sign in with Apple, domen va Return URL `https://<domen>/login`),
-  `APPLE_CLIENT_ID=<Services ID>`. Bo'sh bo'lsa tugma ko'rinmaydi.
 - **Ommaviy oferta**: matni admin -> Sozlamalar -> "Ommaviy oferta" da; saytda `/oferta`.
 
 ## Tillar

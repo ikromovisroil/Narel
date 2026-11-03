@@ -8,7 +8,7 @@ User = get_user_model()
 
 class LoginEmailPhoneBackend(ModelBackend):
     """Parol bilan kirish (login, email yoki telefon) — faqat xodimlar uchun.
-    Mijozlar telefon + SMS kod, Google yoki Apple orqali kiradi."""
+    Mijozlar telefon + SMS kod yoki Google orqali kiradi."""
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         if username is None:

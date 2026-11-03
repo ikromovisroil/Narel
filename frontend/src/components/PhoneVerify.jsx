@@ -6,7 +6,7 @@ import { useStore } from '../store'
 
 const firstError = (err, key) => [].concat(err?.data?.[key] || [])[0]
 
-// Telefonni SMS kod bilan tasdiqlash: profilda almashtirish yoki Google/Apple mijozida qo'shish
+// Telefonni SMS kod bilan tasdiqlash: profilda almashtirish yoki Google mijozida qo'shish
 export default function PhoneVerify({ onDone, onCancel }) {
   const { user, setUser } = useStore()
   const [phone, setPhone] = useState('+998 ')

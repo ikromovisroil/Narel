@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, errorText, tokens } from '../api'
-import AppleButton from '../components/AppleButton'
 import GoogleButton, { SocialDivider } from '../components/GoogleButton'
 import { t } from '../i18n'
 import { formatPhone, phoneOk } from '../phone'
@@ -142,7 +141,6 @@ export default function Login() {
         <PhoneLogin next={next} />
         <SocialDivider />
         <GoogleButton next={next} />
-        <AppleButton next={next} />
       </div>
     </div>
   )

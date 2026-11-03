@@ -1,11 +1,7 @@
-"""Mijoz kirishi: telefon + SMS kod, Apple orqali kirish va ommaviy oferta."""
-import base64
+"""Mijoz kirishi: telefon + SMS kod; telefonni almashtirish va ommaviy oferta."""
 import hashlib
 import hmac
-import json
 import secrets
-import time
-import urllib.request
 from datetime import timedelta
 
 from django.conf import settings
@@ -50,8 +46,6 @@ MESSAGES = {
         "uz": "Bu raqam boshqa hisobga bog'langan.",
         "ru": "Этот номер привязан к другому аккаунту.",
     },
-    "apple_off": {"uz": "Apple orqali kirish sozlanmagan.", "ru": "Вход через Apple не настроен."},
-    "apple_bad": {"uz": "Apple orqali kirib bo'lmadi. Qaytadan urinib ko'ring.", "ru": "Не удалось войти через Apple. Попробуйте ещё раз."},
     "sms_text": {"uz": "Narel: kirish kodi {0}. Hech kimga bermang.", "ru": "Narel: код для входа {0}. Никому не сообщайте."},
 }
 
@@ -188,7 +182,7 @@ class VerifyCodeView(APIView):
 
 
 class ChangePhoneView(APIView):
-    """Profilda telefonni almashtirish yoki qo'shish (Google/Apple mijozlari) — yangi raqamga kelgan kod bilan."""
+    """Profilda telefonni almashtirish yoki qo'shish (Google mijozlari) — yangi raqamga kelgan kod bilan."""
 
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
@@ -209,101 +203,6 @@ class ChangePhoneView(APIView):
                 return error
             request.user.profile, _ = CustomerProfile.objects.update_or_create(user=request.user, defaults={"phone": phone})
         return Response({"phone": phone})
-
-
-# ---------- Apple orqali kirish ----------
-
-APPLE_ISSUER = "https://appleid.apple.com"
-APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys"
-# SHA-256 uchun DigestInfo prefiksi (PKCS#1 v1.5)
-SHA256_PREFIX = bytes.fromhex("3031300d060960864801650304020105000420")
-
-
-def _b64(data):
-    return base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))
-
-
-def _apple_keys():
-    with urllib.request.urlopen(APPLE_KEYS_URL, timeout=10) as r:
-        return json.loads(r.read().decode())["keys"]
-
-
-def rsa_verify(message, signature, n, e):
-    """RS256 imzosini tekshiradi (RSASSA-PKCS1-v1_5 + SHA-256), qo'shimcha kutubxonasiz."""
-    k = (n.bit_length() + 7) // 8
-    if len(signature) != k:
-        return False
-    em = pow(int.from_bytes(signature, "big"), e, n).to_bytes(k, "big")
-    digest = SHA256_PREFIX + hashlib.sha256(message).digest()
-    expected = b"\x00\x01" + b"\xff" * (k - len(digest) - 3) + b"\x00" + digest
-    return hmac.compare_digest(em, expected)
-
-
-def verify_apple_token(id_token, keys=None):
-    """Apple id_token'ini tekshiradi; yaroqli bo'lsa payload, aks holda None."""
-    try:
-        head_b64, body_b64, sig_b64 = id_token.split(".")
-        header = json.loads(_b64(head_b64))
-        payload = json.loads(_b64(body_b64))
-        if header.get("alg") != "RS256":
-            return None
-        key = next((k for k in (keys or _apple_keys()) if k.get("kid") == header.get("kid")), None)
-        if not key:
-            return None
-        n = int.from_bytes(_b64(key["n"]), "big")
-        e = int.from_bytes(_b64(key["e"]), "big")
-        if not rsa_verify(f"{head_b64}.{body_b64}".encode(), _b64(sig_b64), n, e):
-            return None
-    except Exception:
-        return None
-    if (payload.get("iss") != APPLE_ISSUER or payload.get("aud") != settings.APPLE_CLIENT_ID
-            or int(payload.get("exp", 0)) < time.time() or not payload.get("sub")):
-        return None
-    return payload
-
-
-class AppleLoginSerializer(serializers.Serializer):
-    id_token = serializers.CharField()
-    first_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
-    last_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
-
-
-class AppleLoginView(APIView):
-    """Apple bilan kirish. Ism faqat birinchi marta (Apple'dan) keladi."""
-
-    permission_classes = [permissions.AllowAny]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "password"
-
-    def post(self, request):
-        if not settings.APPLE_CLIENT_ID:
-            return bad(request, "apple_off")
-        s = AppleLoginSerializer(data=request.data)
-        s.is_valid(raise_exception=True)
-        info = verify_apple_token(s.validated_data["id_token"])
-        if not info:
-            return bad(request, "apple_bad")
-
-        sub = info["sub"]
-        email = (info.get("email") or "").strip().lower()
-        verified = str(info.get("email_verified")).lower() == "true"
-        profile = CustomerProfile.objects.select_related("user").filter(apple_id=sub).first()
-        user, created = (profile.user if profile else None), False
-        if user is None and email and verified:
-            user = User.objects.filter(email__iexact=email).order_by("id").first()
-            if user:
-                CustomerProfile.objects.update_or_create(user=user, defaults={"apple_id": sub})
-        if user is None:
-            with transaction.atomic():
-                user = User.objects.create_user(
-                    username=free_username(email or f"apple_{sub[:20]}"), email=email,
-                    first_name=s.validated_data.get("first_name", ""), last_name=s.validated_data.get("last_name", ""),
-                )
-                user.set_unusable_password()
-                user.save(update_fields=["password"])
-                CustomerProfile.objects.create(user=user, apple_id=sub)
-            created = True
-        return login_response(request, user, created)
 
 
 # ---------- Ommaviy oferta ----------

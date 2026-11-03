@@ -66,9 +66,9 @@ export default function GoogleButton({ next = '/' }) {
   )
 }
 
-// "yoki" chizig'i — Google yoki Apple yoqilgan bo'lsa
+// "yoki" chizig'i — Google yoqilgan bo'lsa
 export function SocialDivider() {
   const { storeInfo } = useStore()
-  if (!storeInfo?.google_client_id && !storeInfo?.apple_client_id) return null
+  if (!storeInfo?.google_client_id) return null
   return <div className="or-line"><span>{t('yoki')}</span></div>
 }

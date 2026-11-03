@@ -130,8 +130,6 @@ AUTHENTICATION_BACKENDS = ["orders.auth.LoginEmailPhoneBackend"]
 # Google orqali kirish: Google Cloud Console -> OAuth Client ID (Web). Bo'sh bo'lsa tugma ko'rinmaydi.
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 
-# Apple orqali kirish: Apple Developer -> Identifiers -> Services ID (masalan uz.narel.web). Bo'sh bo'lsa tugma ko'rinmaydi.
-APPLE_CLIENT_ID = os.getenv("APPLE_CLIENT_ID", "").strip()
 
 # SMS (Eskiz.uz). Bo'sh bo'lsa va DEBUG=True — test rejimi: kod konsolga chiqadi.
 ESKIZ_EMAIL = os.getenv("ESKIZ_EMAIL", "").strip()
