@@ -1,0 +1,32 @@
+export const formatPrice = n =>
+  `${String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`
+
+export const formatNumber = n => String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+
+export const ORDER_STATUS = {
+  new: { label: 'Yangi', color: 'blue' },
+  confirmed: { label: 'Tasdiqlangan', color: 'cyan' },
+  shipped: { label: 'Yuborilgan', color: 'orange' },
+  delivered: { label: 'Yetkazilgan', color: 'green' },
+  cancelled: { label: 'Bekor qilingan', color: 'red' },
+}
+
+export const PAYMENT = {
+  cash: 'Naqd pul',
+  card: 'Karta',
+  installment: 'Muddatli to\'lov',
+}
+
+export const DELIVERY = {
+  courier: 'Kuryer',
+  pickup: 'Olib ketish',
+}
+
+export const options = map =>
+  Object.entries(map).map(([value, v]) => ({ value, label: typeof v === 'string' ? v : v.label }))
+
+// "1 500 000" ko'rinishida yozish uchun InputNumber formatter
+export const moneyInput = {
+  formatter: v => (v === undefined || v === null || v === '' ? '' : formatNumber(v)),
+  parser: v => (v ? v.replace(/\D/g, '') : ''),
+}

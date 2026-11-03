@@ -1,8 +1,16 @@
-"""Demo ma'lumotlar: python manage.py seed"""
+"""Demo ma'lumotlar: python manage.py seed [--orders 40]"""
+import random
+from datetime import timedelta
+
+from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
-from django.utils.text import slugify
+from django.db import transaction
+from django.utils import timezone
+
+from orders.models import Order, OrderItem
 
 from catalog.models import Banner, Brand, Category, Product, ProductSpec
+from catalog.utils import make_slug as uslug
 
 CATEGORIES = {
     "Smartfonlar va gadjetlar": ["Smartfonlar", "Planshetlar", "Aqlli soatlar", "Quloqchinlar"],
@@ -83,12 +91,14 @@ BANNERS = [
 ]
 
 
-def uslug(text):
-    return slugify(text.replace("'", "").replace('"', "")) or "item"
-
-
 class Command(BaseCommand):
     help = "Demo kategoriyalar, brendlar, mahsulotlar va bannerlarni qo'shadi"
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--orders", type=int, default=0,
+            help="Oxirgi 30 kun uchun shuncha demo buyurtma qo'shish (dashboard uchun)",
+        )
 
     def handle(self, *args, **opts):
         cats = {}
@@ -128,3 +138,43 @@ class Command(BaseCommand):
             Banner.objects.get_or_create(title=title, defaults={"subtitle": subtitle, "order": i})
 
         self.stdout.write(self.style.SUCCESS(f"Tayyor: {created} ta yangi mahsulot qo'shildi."))
+
+        if opts["orders"]:
+            self.demo_orders(opts["orders"])
+
+    @transaction.atomic
+    def demo_orders(self, count):
+        names = ["Aziz Karimov", "Dilnoza Rahimova", "Sardor Aliyev", "Malika Yusupova", "Jasur Toshmatov"]
+        customers = []
+        for i, full in enumerate(names):
+            first, last = full.split()
+            user, made = User.objects.get_or_create(
+                username=f"demo_mijoz{i + 1}", defaults={"first_name": first, "last_name": last}
+            )
+            if made:
+                user.set_unusable_password()  # demo hisoblar bilan kirib bo'lmaydi
+                user.save()
+            customers.append(user)
+
+        products = list(Product.objects.filter(is_active=True))
+        statuses = ["delivered"] * 5 + ["shipped", "confirmed", "new", "new", "cancelled"]
+        now = timezone.now()
+        for _ in range(count):
+            user = random.choice(customers)
+            status = random.choice(statuses)
+            order = Order.objects.create(
+                user=user, full_name=user.get_full_name(), phone=f"+99890{random.randint(1000000, 9999999)}",
+                address="Toshkent sh., demo manzil", status=status,
+                payment_method=random.choice(["cash", "card", "installment"]),
+            )
+            # Sanani oxirgi 30 kunga tarqatamiz (auto_now_add'ni chetlab o'tish uchun update)
+            created_at = now - timedelta(days=random.randint(0, 29), hours=random.randint(0, 12))
+            if status == "new":
+                created_at = now - timedelta(hours=random.randint(0, 20))
+            total = 0
+            for product in random.sample(products, k=random.randint(1, 3)):
+                qty = random.randint(1, 2)
+                OrderItem.objects.create(order=order, product=product, price=product.price, quantity=qty)
+                total += product.price * qty
+            Order.objects.filter(pk=order.pk).update(total=total, created_at=created_at)
+        self.stdout.write(self.style.SUCCESS(f"{count} ta demo buyurtma qo'shildi."))

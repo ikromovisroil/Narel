@@ -24,7 +24,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "username", "first_name", "last_name", "email"]
+        fields = ["id", "username", "first_name", "last_name", "email", "is_staff"]
+        read_only_fields = ["username", "is_staff"]
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
