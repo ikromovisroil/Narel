@@ -55,7 +55,8 @@ class Order(models.Model):
     class Meta:
         verbose_name = "Buyurtma"
         verbose_name_plural = "Buyurtmalar"
-        ordering = ["-created_at"]
+        # Bir xil vaqtda yaratilganlar id bo'yicha — sahifalashda buyurtma takrorlanmasin va tushib qolmasin
+        ordering = ["-created_at", "-id"]
 
     def __str__(self):
         return f"Buyurtma #{self.pk}"

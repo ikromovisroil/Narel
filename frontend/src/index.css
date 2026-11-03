@@ -540,3 +540,8 @@ input.invalid, textarea.invalid { border-color: var(--danger); background: #fff7
   .offer-page { grid-template-columns: 1fr; }
   .offer-toc { position: static; max-height: none; }
 }
+
+/* Buyurtmalarim: "Ko'proq ko'rish" */
+.more-orders { display: grid; justify-items: center; gap: 8px; margin: 8px 0 24px; }
+.more-orders .btn { min-width: 220px; }
+.title-count { font-size: 16px; font-weight: 500; margin-left: 10px; }

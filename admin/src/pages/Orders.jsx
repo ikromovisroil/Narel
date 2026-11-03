@@ -6,7 +6,7 @@ import { ReloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useSearchParams } from 'react-router-dom'
 import { api, errorText } from '../api'
-import { DELIVERY, formatPrice, options, ORDER_STATUS, PAYMENT } from '../utils'
+import { scrollToTable, DELIVERY, formatPrice, options, ORDER_STATUS, PAYMENT } from '../utils'
 import { useCanEdit } from '../auth'
 
 const FLOW = ['new', 'confirmed', 'shipped', 'delivered']
@@ -256,7 +256,7 @@ export default function Orders() {
         onRow={o => ({ onClick: () => update({ open: String(o.id) }), style: { cursor: 'pointer' } })}
         pagination={{
           current: page, total: data.count, pageSize: 20, showSizeChanger: false,
-          showTotal: t => `Jami: ${t}`, onChange: p => update({ page: p === 1 ? '' : String(p) }),
+          showTotal: t => `Jami: ${t}`, onChange: p => { update({ page: p === 1 ? '' : String(p) }); scrollToTable() },
         }}
         columns={[
           { title: '№', dataIndex: 'id', render: id => <b>#{id}</b>, width: 80 },

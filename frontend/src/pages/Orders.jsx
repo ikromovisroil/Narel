@@ -25,7 +25,8 @@ const fmtDate = d => new Date(d).toLocaleDateString('ru-RU')
 
 function Timeline({ order }) {
   if (order.status === 'cancelled') return <div className="order-cancelled">✕ {t('Buyurtma bekor qilingan')}</div>
-  const current = ORDER.indexOf(order.status)
+  // Yetkazilgan bo'lsa — barcha bosqichlar bajarilgan (✓)
+  const current = order.status === 'delivered' ? ORDER.length : ORDER.indexOf(order.status)
   const steps = STEPS[order.delivery_method] || STEPS.courier
   return (
     <ol className="timeline">
@@ -79,10 +80,28 @@ export default function Orders() {
   const { user, paymentMethods } = useStore()
   const paymentTitle = code => paymentMethods.find(m => m.code === code)?.title || t(PAYMENT[code] || code)
   const [orders, setOrders] = useState(null)
+  const [count, setCount] = useState(0)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  // Oxirgi 5 ta buyurtma; "Ko'proq ko'rish" har bosilganda yana 5 tasi qo'shiladi
+  const load = async (n, append) => {
+    const r = await api(`/orders/?page=${n}`)
+    setOrders(prev => (append ? [...(prev || []), ...r.results] : r.results))
+    setCount(r.count)
+    setPage(n)
+    setHasMore(!!r.next)
+  }
 
   useEffect(() => {
-    if (user) api('/orders/').then(r => setOrders(r.results)).catch(() => setOrders([]))
+    if (user) load(1, false).catch(() => setOrders([]))
   }, [user])
+
+  const more = async () => {
+    setLoadingMore(true)
+    try { await load(page + 1, true) } catch { /* tarmoq xatosi — tugma qoladi */ } finally { setLoadingMore(false) }
+  }
 
   if (!user) {
     return (
@@ -95,7 +114,10 @@ export default function Orders() {
 
   return (
     <div>
-      <h1 className="page-title">{t('Buyurtmalarim')}</h1>
+      <h1 className="page-title">
+        {t('Buyurtmalarim')}
+        {count > 0 && <span className="muted title-count">{t('{n} ta', { n: count })}</span>}
+      </h1>
       {!orders ? <div className="muted">{t('Yuklanmoqda...')}</div>
         : !orders.length ? (
           <div className="empty">{t("Hali buyurtma yo'q.")} <Link to="/catalog">{t("Katalogga o'tish")}</Link></div>
@@ -129,6 +151,14 @@ export default function Orders() {
             </div>
           </div>
         ))}
+      {hasMore && (
+        <div className="more-orders">
+          <span className="muted small">{t("{shown} / {total} ta buyurtma ko'rsatilmoqda", { shown: orders.length, total: count })}</span>
+          <button className="btn btn-outline" onClick={more} disabled={loadingMore}>
+            {loadingMore ? t('Yuklanmoqda...') : t("Ko'proq ko'rish")}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

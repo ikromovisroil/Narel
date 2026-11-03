@@ -3,7 +3,7 @@ import { App, Button, Image, Input, Popconfirm, Select, Space, Switch, Table, Ta
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, errorText } from '../api'
-import { formatPrice } from '../utils'
+import { scrollToTable, formatPrice } from '../utils'
 import { useCanEdit, usePerm } from '../auth'
 
 export default function Products() {
@@ -94,12 +94,12 @@ export default function Products() {
 
       <Table
         rowKey="id" loading={loading} dataSource={data.results} scroll={{ x: 1100 }}
-        onChange={(_, __, sorter) => update({
+        onChange={(_, __, sorter, { action }) => action === 'sort' && update({
           ordering: sorter.order ? `${sorter.order === 'descend' ? '-' : ''}${sorter.field}` : '',
         })}
         pagination={{
           current: page, total: data.count, pageSize: 20, showSizeChanger: false,
-          showTotal: t => `Jami: ${t}`, onChange: p => update({ page: p === 1 ? '' : String(p) }),
+          showTotal: t => `Jami: ${t}`, onChange: p => { update({ page: p === 1 ? '' : String(p) }); scrollToTable() },
         }}
         columns={[
           {

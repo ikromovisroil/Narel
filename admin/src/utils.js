@@ -34,3 +34,18 @@ export const moneyInput = {
   formatter: v => (v === undefined || v === null || v === '' ? '' : formatNumber(v)),
   parser: v => (v ? v.replace(/\D/g, '') : ''),
 }
+
+// Sahifa almashganda jadval boshiga qaytish (pagination pastda turadi)
+export function scrollToTable() {
+  const table = () => document.querySelector('.ant-table-wrapper')
+  requestAnimationFrame(() => table()?.scrollIntoView({ block: 'start' }))
+  // Yangi sahifa yuklangach balandlik o'zgaradi — yuklanish tugagach yana bir marta tekislaymiz
+  const started = Date.now()
+  const timer = setInterval(() => {
+    const loading = document.querySelector('.ant-table-wrapper .ant-spin-spinning')
+    if (!loading || Date.now() - started > 4000) {
+      clearInterval(timer)
+      setTimeout(() => table()?.scrollIntoView({ block: 'start' }), 50)
+    }
+  }, 100)
+}

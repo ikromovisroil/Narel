@@ -1,4 +1,5 @@
 from rest_framework import generics, mixins, permissions, status, viewsets
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
@@ -14,12 +15,19 @@ class MeView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
+class OrderPagination(PageNumberPagination):
+    """Mijozning buyurtmalari 5 tadan: "Ko'proq ko'rish" har safar keyingi 5 tasini oladi."""
+
+    page_size = 5
+
+
 class OrderViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
 ):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = OrderPagination
 
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user).prefetch_related("items__product")

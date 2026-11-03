@@ -5,6 +5,7 @@ import {
 import { CheckCircleFilled, DeleteOutlined, LinkOutlined, MessageOutlined, ShopFilled } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useSearchParams } from 'react-router-dom'
+import { scrollToTable } from '../utils'
 import { api, errorText } from '../api'
 import { usePerm } from '../auth'
 
@@ -152,7 +153,7 @@ export default function Comments() {
         rowClassName={c => (c.is_hidden ? 'row-muted' : c.is_staff ? 'row-staff' : '')}
         pagination={{
           current: page, total: data.count, pageSize: 20, showSizeChanger: false,
-          showTotal: t => `Jami: ${t}`, onChange: p => update({ page: p === 1 ? '' : String(p) }),
+          showTotal: t => `Jami: ${t}`, onChange: p => { update({ page: p === 1 ? '' : String(p) }); scrollToTable() },
         }}
         columns={[
           {

@@ -3,7 +3,7 @@ import { Drawer, Input, Select, Table, Tag, Typography } from 'antd'
 import dayjs from 'dayjs'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import { formatPrice, ORDER_STATUS } from '../utils'
+import { scrollToTable, formatPrice, ORDER_STATUS } from '../utils'
 
 function CustomerOrders({ customer, onClose }) {
   const [orders, setOrders] = useState(null)
@@ -72,10 +72,10 @@ export default function Customers() {
       <Table
         rowKey="id" loading={loading} dataSource={data.results} scroll={{ x: 800 }}
         onRow={c => ({ onClick: () => setSelected(c), style: { cursor: 'pointer' } })}
-        onChange={(_, __, s) => update({ ordering: s.order ? `${s.order === 'descend' ? '-' : ''}${s.field}` : '' })}
+        onChange={(_, __, s, { action }) => action === 'sort' && update({ ordering: s.order ? `${s.order === 'descend' ? '-' : ''}${s.field}` : '' })}
         pagination={{
           current: page, total: data.count, pageSize: 20, showSizeChanger: false,
-          showTotal: t => `Jami: ${t}`, onChange: p => update({ page: p === 1 ? '' : String(p) }),
+          showTotal: t => `Jami: ${t}`, onChange: p => { update({ page: p === 1 ? '' : String(p) }); scrollToTable() },
         }}
         columns={[
           {

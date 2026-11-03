@@ -468,3 +468,21 @@ class CustomerAccountTests(APITestCase):
         self.assertEqual(self.client.get("/api/auth/me/").json()["phone"], "+998 93 555 44 33")
         # Boshqa mijozning raqami
         self.assertIn("phone", change("+998910000000", "123456").data)
+
+
+class MyOrdersPaginationTests(APITestCase):
+    def test_orders_come_five_per_page_newest_first(self):
+        user = User.objects.create_user("ali")
+        other = User.objects.create_user("vali")
+        for i in range(12):
+            Order.objects.create(user=user, full_name="A", phone="+998 90 123 45 67", address="Toshkent 1", total=i)
+        Order.objects.create(user=other, full_name="V", phone="+998 91 000 00 00", address="Toshkent 2")
+        self.client.force_authenticate(user)
+        r = self.client.get("/api/orders/").json()
+        self.assertEqual((r["count"], len(r["results"])), (12, 5))
+        self.assertIsNotNone(r["next"])
+        ids = [o["id"] for o in r["results"]]
+        self.assertEqual(ids, sorted(ids, reverse=True))
+        last = self.client.get("/api/orders/?page=3").json()
+        self.assertEqual(len(last["results"]), 2)
+        self.assertIsNone(last["next"])

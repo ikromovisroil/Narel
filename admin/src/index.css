@@ -86,3 +86,6 @@ body { margin: 0; background: #f4f5f8; }
 .branch-item.off { opacity: .6; }
 .branch-main { min-width: 0; }
 .branch-meta { color: #666; font-size: 13px; margin-top: 2px; }
+
+/* Jadval boshiga qaytganda sarlavha yopilib qolmasin */
+.ant-table-wrapper { scroll-margin-top: 80px; }
