@@ -6,9 +6,10 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from catalog.views import BannerViewSet, BrandViewSet, CategoryViewSet, ProductViewSet
-from orders.views import MeView, OrderViewSet, RegisterView
+from orders.views import MeView, OrderViewSet, PasswordChangeView, RegisterView
 from payments.views import PublicPaymentMethodViewSet
 from comments.views import MyCommentView, ProductCommentsView
+from orders.google import GoogleLoginView
 from orders.store import PublicStoreSettingsView
 
 router = DefaultRouter()
@@ -30,6 +31,8 @@ urlpatterns = [
     path("api/auth/login/", TokenObtainPairView.as_view()),
     path("api/auth/refresh/", TokenRefreshView.as_view()),
     path("api/auth/me/", MeView.as_view()),
+    path("api/auth/password/", PasswordChangeView.as_view()),
+    path("api/auth/google/", GoogleLoginView.as_view()),
 ]
 
 if settings.DEBUG:

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { api, errorText, formatPrice } from '../api'
 import StoreInfo from '../components/StoreInfo'
-import { phoneOk } from '../phone'
+import { formatPhone, phoneOk } from '../phone'
 import { t } from '../i18n'
 import { useStore } from '../store'
 
@@ -12,7 +12,22 @@ const fmtDate = d => new Date(d).toLocaleDateString('ru-RU')
 export default function Checkout() {
   const { user, cart, cartTotal, clearCart, paymentMethods, installmentMonths, monthly, storeInfo } = useStore()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ address: '', note: '', payment_method: '', delivery_method: '', pickup_branch: null })
+  // Profilda saqlangan ma'lumotlar avtomatik qo'yiladi, mijoz xohlasa o'zgartiradi
+  const [form, setForm] = useState(() => ({
+    full_name: user ? `${user.first_name} ${user.last_name}`.trim() : '',
+    phone: user?.phone || '+998 ', address: user?.address || '',
+    note: '', payment_method: '', delivery_method: '', pickup_branch: null,
+  }))
+  // Profil keyinroq yuklansa (sahifa yangilanganda) — bo'sh maydonlarni to'ldiramiz
+  useEffect(() => {
+    if (!user) return
+    setForm(f => ({
+      ...f,
+      full_name: f.full_name || `${user.first_name} ${user.last_name}`.trim(),
+      phone: phoneOk(f.phone) ? f.phone : user.phone || f.phone,
+      address: f.address || user.address || '',
+    }))
+  }, [user])
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [sending, setSending] = useState(false)
@@ -45,17 +60,16 @@ export default function Checkout() {
   if (!cart.length) return <Navigate to="/cart" />
 
   const set = k => e => {
-    setForm({ ...form, [k]: k === 'pickup_branch' ? Number(e.target.value) : e.target.value })
+    const v = e.target.value
+    setForm({ ...form, [k]: k === 'pickup_branch' ? Number(v) : k === 'phone' ? formatPhone(v) : v })
     if (fieldErrors[k]) setFieldErrors({ ...fieldErrors, [k]: '' })
   }
 
-  // FISH va telefon — profildan (registratsiyada kiritilgan)
-  const fullName = `${user.first_name} ${user.last_name}`.trim()
-  const profileOk = !!fullName && phoneOk(user.phone)
-
-  // Manzil va (olib ketishda) filial majburiy — backend ham tekshiradi
+  // FISH, telefon, manzil va (olib ketishda) filial majburiy — backend ham tekshiradi
   const validate = () => {
     const errs = {}
+    if (!form.full_name.trim()) errs.full_name = t('Ism va familiyangizni kiriting.')
+    if (!phoneOk(form.phone)) errs.phone = t("Telefon raqamini to'liq kiriting: +998 XX XXX XX XX.")
     if (form.address.trim().length < 5) errs.address = t("Manzilni to'liq kiriting.")
     if (delivery === 'pickup' && !branch) errs.pickup_branch = t('Buyurtmani olib ketadigan filialni tanlang.')
     setFieldErrors(errs)
@@ -105,8 +119,10 @@ export default function Checkout() {
     } catch (err) {
       if (err.status === 401) navigate('/login?next=/checkout')
       const d = err?.data || {}
-      if (d.address || d.pickup_branch) {
-        setFieldErrors({ address: [].concat(d.address || [])[0] || '', pickup_branch: [].concat(d.pickup_branch || [])[0] || '' })
+      const errs = Object.fromEntries(['full_name', 'phone', 'address', 'pickup_branch']
+        .filter(k => d[k]).map(k => [k, [].concat(d[k])[0]]))
+      if (Object.keys(errs).length) {
+        setFieldErrors(errs)
       } else {
         setError(errorText(err))
       }
@@ -125,17 +141,25 @@ export default function Checkout() {
       <form className="cart" onSubmit={submit} noValidate>
         <div className="form-card">
           <h3>{t('Qabul qiluvchi')}</h3>
-          {profileOk ? (
-            <div className="recipient">
-              <div><b>{fullName}</b><span className="muted">{user.phone}</span></div>
-              <Link to="/profile?next=/checkout" className="small">{t("O'zgartirish")}</Link>
-            </div>
-          ) : (
-            <div className="notice">
-              <b>{t("Profilingizda ism-familiya yoki telefon yo'q")}</b>
-              <span>{t("Buyurtma berish uchun profilni to'ldiring — keyingi safar qayta so'ralmaydi.")}</span>
-              <Link className="btn" to="/profile?next=/checkout">{t("Profilni to'ldirish")}</Link>
-            </div>
+          <div className="form-row">
+            <label>
+              <span>{t('F.I.Sh.')} <span className="req">*</span></span>
+              <input autoComplete="name" value={form.full_name} onChange={set('full_name')}
+                     className={fieldErrors.full_name ? 'invalid' : ''} />
+              {fieldErrors.full_name && <span className="field-error">{fieldErrors.full_name}</span>}
+            </label>
+            <label>
+              <span>{t('Telefon')} <span className="req">*</span></span>
+              <input type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')}
+                     placeholder="+998 90 123 45 67" className={fieldErrors.phone ? 'invalid' : ''} />
+              {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
+            </label>
+          </div>
+          {!(user.phone && user.address) && (
+            <p className="muted small">
+              {t("Ma'lumotlarni profilda saqlab qo'ysangiz, keyingi safar avtomatik qo'yiladi.")}{' '}
+              <Link to="/profile?next=/checkout">{t("Profilga o'tish")}</Link>
+            </p>
           )}
 
           <h3>{t('Yetkazib berish')}</h3>
@@ -218,7 +242,7 @@ export default function Checkout() {
             <span className={fee ? '' : 'ok'}>{fee ? formatPrice(fee) : t('Bepul')}</span>
           </div>
           <div className="row-between big"><span>{t('Jami')}</span><strong>{formatPrice(cartTotal + fee)}</strong></div>
-          <button className="btn btn-lg" disabled={sending || !payment || !delivery || !profileOk}>
+          <button className="btn btn-lg" disabled={sending || !payment || !delivery}>
             {sending ? t('Yuborilmoqda...') : t('Buyurtma berish')}
           </button>
         </div>

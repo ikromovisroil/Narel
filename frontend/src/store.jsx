@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { api, tokens } from './api'
 import { getLang, setLang, t } from './i18n'
 
@@ -48,6 +48,13 @@ export function StoreProvider({ children }) {
     tokens.set(tk.access, tk.refresh)
     setUser(await api('/auth/me/'))
   }
+  // Google tokeni bilan kirish; javobda created: yangi hisob ochildimi
+  const googleLogin = useCallback(async credential => {
+    const r = await api('/auth/google/', { method: 'POST', body: { credential }, auth: false })
+    tokens.set(r.access, r.refresh)
+    setUser(await api('/auth/me/'))
+    return r
+  }, [])
   const logout = () => { tokens.clear(); setUser(null) }
 
   const addToCart = (p, qty = 1) => setCart(items => {
@@ -103,7 +110,7 @@ export function StoreProvider({ children }) {
 
   return (
     <StoreContext.Provider value={{
-      user, setUser, login, logout, lang, changeLang, paymentMethods, installmentMonths, monthly, storeInfo,
+      user, setUser, login, googleLogin, logout, lang, changeLang, paymentMethods, installmentMonths, monthly, storeInfo,
       cart, cartCount, cartTotal, addToCart, setQty, removeFromCart, clearCart, refreshCart,
       favorites, isFavorite, toggleFavorite, clearFavorites, refreshFavorites,
     }}>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, errorText } from '../api'
+import GoogleButton from '../components/GoogleButton'
 import { t } from '../i18n'
 import { fieldErrorsOf, formatPhone, phoneOk } from '../phone'
 import { useStore } from '../store'
@@ -49,6 +50,7 @@ export function Login() {
                          onChange={e => setForm({ ...form, password: e.target.value })} /></label>
       {error && <div className="error">{error}</div>}
       <button className="btn btn-lg">{t('Kirish')}</button>
+      <GoogleButton next={next} />
       <p className="muted">{t("Hisobingiz yo'qmi?")} <Link to={`/register?next=${encodeURIComponent(next)}`}>{t("Ro'yxatdan o'tish")}</Link></p>
     </form>
   )
@@ -140,6 +142,7 @@ export function Register() {
       </Field>
       {error && <div className="error">{error}</div>}
       <button className="btn btn-lg" disabled={sending}>{sending ? t('Yuborilmoqda...') : t("Ro'yxatdan o'tish")}</button>
+      <GoogleButton next={next} />
       <p className="muted">{t('Hisobingiz bormi?')} <Link to={`/login?next=${encodeURIComponent(next)}`}>{t('Kirish')}</Link></p>
     </form>
   )

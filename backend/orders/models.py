@@ -150,6 +150,7 @@ class CustomerProfile(models.Model):
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     phone = models.CharField("Telefon", max_length=20, blank=True)
+    address = models.CharField("Yetkazish manzili", max_length=255, blank=True)
 
     class Meta:
         verbose_name = "Mijoz profili"
@@ -162,6 +163,15 @@ class CustomerProfile(models.Model):
         return f"{self.user} · {self.phone}"
 
 
+def user_profile(user):
+    return getattr(user, "profile", None) if user and user.pk else None
+
+
 def user_phone(user):
-    profile = getattr(user, "profile", None) if user and user.pk else None
+    profile = user_profile(user)
     return profile.phone if profile else ""
+
+
+def user_address(user):
+    profile = user_profile(user)
+    return profile.address if profile else ""

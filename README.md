@@ -70,6 +70,23 @@ npm run dev
 
 http://localhost:5174 — `createsuperuser` bilan yaratilgan (yoki `is_staff` belgisi bor) hisob bilan kiriladi.
 
+## Google orqali kirish
+
+Kirish va ro'yxatdan o'tish sahifalarida "Google bilan davom etish" tugmasi bor. U `backend/.env` da
+`GOOGLE_CLIENT_ID` to'ldirilgandan keyin ko'rinadi.
+
+1. [Google Cloud Console](https://console.cloud.google.com/) da loyiha yarating (yoki mavjudini tanlang).
+2. **APIs & Services → OAuth consent screen**: "External", ilova nomi (Narel), email — saqlang.
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID**, turi **Web application**.
+4. **Authorized JavaScript origins** ga do'kon manzilini qo'shing: `http://localhost:5173`
+   (serverga chiqarganda haqiqiy domen ham, masalan `https://narel.uz`). Redirect URI kerak emas.
+5. Hosil bo'lgan **Client ID** ni (`....apps.googleusercontent.com`) `backend/.env` ga yozing:
+   `GOOGLE_CLIENT_ID=....apps.googleusercontent.com` va backendni qayta ishga tushiring.
+
+Qoidalar: hisob Google'dagi tasdiqlangan email bo'yicha topiladi yoki yangisi ochiladi; xodimlar Google orqali
+kira olmaydi. Google telefon raqamini bermaydi — yangi mijoz profilga yo'naltiriladi, u yerda telefon va manzilni
+kiritadi va xohlasa parol o'rnatadi.
+
 ## Tillar
 
 Sayt ikki tilda: **o'zbek** va **rus**. Til yuqori o'ng burchakda tanlanadi va brauzerda eslab qolinadi.

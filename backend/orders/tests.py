@@ -1,4 +1,7 @@
 from datetime import timedelta
+from unittest.mock import patch
+
+from django.test import override_settings
 
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -165,6 +168,15 @@ class AcceptAndDelayTests(APITestCase):
         self.patch(expected_date=str(promised))
         mine = self.mine()
         self.assertFalse(mine["is_delayed"])
+        self.assertEqual(mine["delay_note"], "")
+
+    def test_postpone_without_reason(self):
+        promised = self.today + timedelta(days=1)
+        self.patch(status="confirmed", expected_date=str(promised))
+        r = self.patch(expected_date=str(promised + timedelta(days=3)))
+        self.assertEqual(r.status_code, 200, r.data)
+        mine = self.mine()
+        self.assertTrue(mine["is_delayed"])
         self.assertEqual(mine["delay_note"], "")
 
     def test_overdue_counts_as_delayed_until_delivered(self):
@@ -343,3 +355,102 @@ class AccountTests(APITestCase):
         r = self.client.post("/api/orders/", body, format="json")
         self.assertEqual(r.status_code, 400)
         self.assertIn("full_name", r.data)
+
+
+class ProfileAddressTests(APITestCase):
+    def setUp(self):
+        StoreSettings.objects.update_or_create(pk=1, defaults={"delivery_enabled": True})
+        cat = Category.objects.create(name="C", slug="c")
+        self.product = Product.objects.create(name="P", slug="p", category=cat, price=100, stock=5)
+        self.user = User.objects.create_user("ali", password="x", first_name="Ali", last_name="Valiyev")
+        self.client.force_authenticate(self.user)
+
+    def order(self, **data):
+        body = {"delivery_method": "courier", "payment_method": "cash", "cart": [{"product": self.product.id, "quantity": 1}]}
+        body.update(data)
+        return self.client.post("/api/orders/", body, format="json")
+
+    def test_saved_address_used_and_can_be_overridden(self):
+        r = self.client.patch("/api/auth/me/", {"phone": "901234567", "address": "  Toshkent, Chilonzor 5  "}, format="json")
+        self.assertEqual(r.data["address"], "Toshkent, Chilonzor 5")
+        r = self.order()
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data["address"], "Toshkent, Chilonzor 5")
+        r = self.order(full_name="Vali Aliyev", phone="+998 93 111 22 33", address="Samarqand, Registon 1")
+        self.assertEqual((r.data["full_name"], r.data["phone"], r.data["address"]),
+                         ("Vali Aliyev", "+998 93 111 22 33", "Samarqand, Registon 1"))
+        # Profil o'zgarmaydi
+        self.assertEqual(self.client.get("/api/auth/me/").json()["address"], "Toshkent, Chilonzor 5")
+
+    def test_empty_fields_rejected(self):
+        r = self.order(phone="+998 90 123 45 67")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("address", r.data)
+
+
+class PasswordChangeTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("ali", password="Eski-parol-123")
+        self.client.force_authenticate(self.user)
+
+    def change(self, old, new):
+        return self.client.post("/api/auth/password/", {"old_password": old, "new_password": new}, format="json")
+
+    def test_change_password(self):
+        self.assertIn("old_password", self.change("xato", "Yangi-parol-456").data)
+        self.assertIn("new_password", self.change("Eski-parol-123", "123").data)
+        self.assertIn("new_password", self.change("Eski-parol-123", "Eski-parol-123").data)
+        self.assertEqual(self.change("Eski-parol-123", "Yangi-parol-456").status_code, 204)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("Yangi-parol-456"))
+
+    def test_requires_login(self):
+        self.client.force_authenticate(None)
+        self.assertEqual(self.change("a", "b").status_code, 401)
+
+
+@override_settings(GOOGLE_CLIENT_ID="test-client.apps.googleusercontent.com")
+class GoogleLoginTests(APITestCase):
+    INFO = {
+        "aud": "test-client.apps.googleusercontent.com", "iss": "https://accounts.google.com", "sub": "123",
+        "email": "Ali@Gmail.com", "email_verified": "true", "given_name": "Ali", "family_name": "Valiyev",
+    }
+
+    def google(self, info):
+        with patch("orders.google.verify_google_token", return_value=info):
+            return self.client.post("/api/auth/google/", {"credential": "x"}, format="json")
+
+    def test_creates_account_then_logs_in(self):
+        r = self.google(self.INFO)
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertTrue(r.data["created"])
+        user = User.objects.get(email="ali@gmail.com")
+        self.assertEqual((user.first_name, user.last_name), ("Ali", "Valiyev"))
+        self.assertFalse(user.has_usable_password())
+        r = self.google(self.INFO)
+        self.assertFalse(r.data["created"])
+        self.assertEqual(User.objects.filter(email="ali@gmail.com").count(), 1)
+        # Token bilan profil ochiladi, parolni joriy parolsiz o'rnatadi
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
+        self.assertFalse(self.client.get("/api/auth/me/").json()["has_password"])
+        self.assertEqual(self.client.post("/api/auth/password/", {"new_password": "Yangi-parol-456"}, format="json").status_code, 204)
+        self.assertTrue(self.client.get("/api/auth/me/").json()["has_password"])
+
+    def test_links_existing_customer_and_blocks_staff(self):
+        User.objects.create_user("ali", email="ali@gmail.com", password="x")
+        r = self.google(self.INFO)
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(r.data["created"])
+        User.objects.create_user("boss", email="boss@gmail.com", password="x", is_staff=True)
+        r = self.google({**self.INFO, "email": "boss@gmail.com"})
+        self.assertEqual(r.status_code, 400)
+
+    def test_invalid_token(self):
+        self.assertEqual(self.google(None).status_code, 400)
+
+    def test_public_client_id(self):
+        self.assertEqual(self.client.get("/api/store-settings/").json()["google_client_id"], self.INFO["aud"])
+
+    @override_settings(GOOGLE_CLIENT_ID="")
+    def test_disabled(self):
+        self.assertEqual(self.google(self.INFO).status_code, 400)

@@ -23,8 +23,14 @@ class PublicStoreSettingsSerializer(serializers.ModelSerializer):
         model = StoreSettings
         fields = [
             "delivery_enabled", "delivery_price", "delivery_days", "delivery_note", "pickup_enabled",
-            "phone", "address", "working_hours", "map_url", "branches",
+            "phone", "address", "working_hours", "map_url", "branches", "google_client_id",
         ]
+
+    google_client_id = serializers.SerializerMethodField()
+
+    def get_google_client_id(self, obj):
+        from django.conf import settings
+        return settings.GOOGLE_CLIENT_ID
 
     branches = serializers.SerializerMethodField()
     pickup_enabled = serializers.SerializerMethodField()

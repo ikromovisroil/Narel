@@ -112,7 +112,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 12,
     # Izoh yozish: bir foydalanuvchi daqiqasiga 10 tagacha
-    "DEFAULT_THROTTLE_RATES": {"comments": "10/min"},
+    "DEFAULT_THROTTLE_RATES": {"comments": "10/min", "password": "10/min"},
 }
 
 SIMPLE_JWT = {
@@ -126,3 +126,6 @@ CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
 
 # Kirish: login, email yoki telefon raqami bilan
 AUTHENTICATION_BACKENDS = ["orders.auth.LoginEmailPhoneBackend"]
+
+# Google orqali kirish: Google Cloud Console -> OAuth Client ID (Web). Bo'sh bo'lsa tugma ko'rinmaydi.
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()

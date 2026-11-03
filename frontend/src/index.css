@@ -419,7 +419,6 @@ input.invalid, textarea.invalid { border-color: var(--danger); background: #fff7
 .seg { display: grid; grid-template-columns: 1fr 1fr; background: #f1f4f9; border-radius: 10px; padding: 4px; gap: 4px; }
 .seg button { border: 0; background: none; padding: 9px; border-radius: 8px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .seg button.on { background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-.profile { max-width: 520px; }
 /* Checkout: qabul qiluvchi va filial tanlash */
 .recipient { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #f6f8fc; border-radius: 10px; padding: 12px 14px; }
 .recipient > div { display: grid; gap: 2px; }
@@ -427,3 +426,59 @@ input.invalid, textarea.invalid { border-color: var(--danger); background: #fff7
 .branch-pick .label-text { font-size: 14px; color: var(--muted); }
 .choices.branches { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .choices.branches .choice { gap: 4px; }
+
+/* Profil sahifasi */
+.profile-page { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; margin: 8px 0 24px; }
+.profile-side { display: grid; gap: 14px; position: sticky; top: 90px; }
+.profile-main { display: grid; gap: 16px; min-width: 0; }
+.profile-main .page-title { margin: 0; }
+.pcard { background: var(--card); border-radius: var(--radius); padding: 20px; display: grid; gap: 14px; }
+.pcard h2 { font-size: 18px; margin: 0; }
+.pcard label { display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+.pcard-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pcard-foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.profile-hero { justify-items: center; text-align: center; gap: 6px; }
+.avatar { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, var(--primary), #6d8dff); margin-bottom: 6px; }
+.hero-name { font-size: 18px; }
+.completeness { width: 100%; display: grid; gap: 6px; margin-top: 10px; text-align: left; }
+.completeness .bar { height: 8px; background: #edf0f5; border-radius: 99px; overflow: hidden; }
+.completeness .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--primary), var(--ok)); border-radius: 99px; transition: width .3s; }
+.pstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pstat { background: var(--card); border-radius: var(--radius); padding: 12px 6px; display: grid; justify-items: center; gap: 2px; color: var(--text); font-size: 12px; }
+.pstat svg { color: var(--primary); }
+.pstat b { font-size: 18px; }
+.pstat span { color: var(--muted); }
+.pstat:hover { box-shadow: 0 2px 10px rgba(31,94,255,.12); }
+.pnav { padding: 8px; gap: 2px; }
+.pnav a, .pnav button { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; color: var(--text); font-size: 15px;
+  background: none; border: 0; cursor: pointer; text-align: left; width: 100%; font-family: inherit; }
+.pnav a:hover { background: #f1f4f9; }
+.pnav .danger { color: var(--danger); }
+.pnav .danger:hover { background: #fdecec; }
+.last-order { gap: 2px; color: var(--text); border-left: 4px solid var(--primary); }
+.last-order:hover { box-shadow: 0 2px 10px rgba(31,94,255,.12); }
+.profile-form { display: grid; gap: 16px; }
+.profile-form .pcard { scroll-margin-top: 90px; }
+#security { scroll-margin-top: 90px; }
+.save-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; background: var(--card);
+  border-radius: var(--radius); padding: 12px 20px; position: sticky; bottom: 12px; }
+.save-bar.dirty { box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+.save-bar .btn-light { border: 1px solid var(--border); }
+.show-pass { display: flex !important; align-items: center; gap: 6px; cursor: pointer; }
+.pgrid-gap { display: block; }
+@media (max-width: 860px) {
+  .profile-page { grid-template-columns: 1fr; }
+  .profile-side { position: static; }
+}
+@media (max-width: 560px) {
+  .pgrid { grid-template-columns: 1fr; }
+  .pgrid-gap { display: none; }
+  .pcard { padding: 16px; }
+}
+
+/* Google bilan kirish */
+.or-line { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; }
+.or-line::before, .or-line::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.google-btn { display: flex; justify-content: center; min-height: 44px; }

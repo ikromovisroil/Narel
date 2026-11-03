@@ -86,8 +86,9 @@ function DeliveryDateBox({ order, canEdit, onSaved }) {
         <>
           <Alert type="warning" showIcon
                  title="Sana va'da qilinganidan keyinga surilmoqda — mijozga kechikish uchun uzr xabari ko'rsatiladi." />
+          <Typography.Text type="secondary">Sababi (ixtiyoriy — yozmasangiz ham saqlanadi):</Typography.Text>
           <Input.TextArea rows={2} maxLength={255} showCount value={note} onChange={e => setNote(e.target.value)}
-                          placeholder="Kechikish sababi (ixtiyoriy, mijozga ko'rinadi). Masalan: Ombordan kech yetib keldi"
+                          placeholder="Mijozga ko'rinadi. Masalan: Ombordan kech yetib keldi"
                           style={{ marginBottom: 16 }} />
         </>
       )}

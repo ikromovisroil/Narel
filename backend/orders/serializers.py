@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from datetime import timedelta
 
 from django.db import transaction
@@ -11,7 +12,7 @@ from catalog.models import Product
 from payments.models import PaymentMethod
 from staff.models import effective_permissions
 
-from .models import Branch, CustomerProfile, Order, OrderItem, StoreSettings, user_phone
+from .models import Branch, CustomerProfile, Order, OrderItem, StoreSettings, user_address, user_phone
 from .branches import PublicBranchSerializer
 
 User = get_user_model()
@@ -53,6 +54,11 @@ MESSAGES = {
         "ru": "Укажите логин или email.",
     },
     "required": {"uz": "Bu maydonni to'ldiring.", "ru": "Заполните это поле."},
+    "old_password": {"uz": "Joriy parol noto'g'ri.", "ru": "Текущий пароль неверный."},
+    "same_password": {
+        "uz": "Yangi parol joriy paroldan farq qilishi kerak.",
+        "ru": "Новый пароль должен отличаться от текущего.",
+    },
     "phone": {
         "uz": "Telefon raqamini to'liq kiriting: +998 XX XXX XX XX.",
         "ru": "Укажите номер телефона полностью: +998 XX XXX XX XX.",
@@ -159,14 +165,17 @@ class UserSerializer(AccountFieldsMixin, serializers.ModelSerializer):
     phone = serializers.CharField(required=False, allow_blank=False)
     username = serializers.CharField(required=False, max_length=150)
     email = serializers.EmailField(required=False, allow_blank=True)
+    # Buyurtma berishda avtomatik qo'yiladi (ixtiyoriy)
+    address = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    has_password = serializers.BooleanField(source="has_usable_password", read_only=True)
 
     class Meta:
         model = User
         fields = [
-            "id", "username", "first_name", "last_name", "email", "phone",
-            "is_staff", "is_superuser", "permissions",
+            "id", "username", "first_name", "last_name", "email", "phone", "address",
+            "is_staff", "is_superuser", "permissions", "date_joined", "has_password",
         ]
-        read_only_fields = ["is_staff", "is_superuser"]
+        read_only_fields = ["is_staff", "is_superuser", "date_joined"]
 
     def validate_username(self, value):
         value = super().validate_username(value)
@@ -179,14 +188,17 @@ class UserSerializer(AccountFieldsMixin, serializers.ModelSerializer):
     def to_representation(self, obj):
         data = super().to_representation(obj)
         data["phone"] = user_phone(obj)
+        data["address"] = user_address(obj)
         return data
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        phone = validated_data.pop("phone", None)
+        extra = {k: validated_data.pop(k) for k in ("phone", "address") if k in validated_data}
+        if "address" in extra:
+            extra["address"] = extra["address"].strip()
         user = super().update(instance, validated_data)
-        if phone is not None:
-            user.profile, _ = CustomerProfile.objects.update_or_create(user=user, defaults={"phone": phone})
+        if extra:
+            user.profile, _ = CustomerProfile.objects.update_or_create(user=user, defaults=extra)
         return user
 
     def get_permissions(self, obj):
@@ -275,7 +287,7 @@ class OrderSerializer(serializers.ModelSerializer):
         if not phone:
             raise serializers.ValidationError({"phone": message(request, "phone")})
         attrs["phone"] = phone
-        attrs["address"] = (attrs.get("address") or "").strip()
+        attrs["address"] = (attrs.get("address") or "").strip() or user_address(user)
         if len(attrs["address"]) < 5:
             raise serializers.ValidationError({"address": message(request, "address")})
         return attrs
@@ -317,3 +329,22 @@ class OrderSerializer(serializers.ModelSerializer):
         order.total = total
         order.save(update_fields=["total", "delivery_price", "expected_date"])
         return order
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    # Google orqali ochilgan hisobda parol yo'q — birinchi marta joriy parolsiz o'rnatiladi
+    old_password = serializers.CharField(required=False, allow_blank=True)
+    new_password = serializers.CharField()
+
+    def validate(self, attrs):
+        request = self.context["request"]
+        user = request.user
+        if user.has_usable_password() and not user.check_password(attrs.get("old_password") or ""):
+            raise serializers.ValidationError({"old_password": message(request, "old_password")})
+        if attrs.get("old_password") == attrs["new_password"]:
+            raise serializers.ValidationError({"new_password": message(request, "same_password")})
+        try:
+            validate_password(attrs["new_password"], request.user)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({"new_password": list(e.messages)})
+        return attrs
