@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import Home from './pages/Home'
@@ -6,7 +6,8 @@ import Catalog from './pages/Catalog'
 import ProductPage from './pages/ProductPage'
 import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
-import { Login, Register } from './pages/Auth'
+import Login from './pages/Login'
+import Offer from './pages/Offer'
 import Orders from './pages/Orders'
 import Profile from './pages/Profile'
 import Favorites from './pages/Favorites'
@@ -28,7 +29,8 @@ export default function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/register" element={<Navigate to="/login" replace />} />
+          <Route path="/oferta" element={<Offer />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/favorites" element={<Favorites />} />

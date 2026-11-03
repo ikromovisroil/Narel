@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { api, errorText, formatPrice } from '../api'
+import PhoneVerify from '../components/PhoneVerify'
 import StoreInfo from '../components/StoreInfo'
-import { formatPhone, phoneOk } from '../phone'
 import { t } from '../i18n'
 import { useStore } from '../store'
 
@@ -10,21 +10,21 @@ const fmtDate = d => new Date(d).toLocaleDateString('ru-RU')
 
 
 export default function Checkout() {
-  const { user, cart, cartTotal, clearCart, paymentMethods, installmentMonths, monthly, storeInfo } = useStore()
+  const { user, setUser, cart, cartTotal, clearCart, paymentMethods, installmentMonths, monthly, storeInfo } = useStore()
   const navigate = useNavigate()
-  // Profilda saqlangan ma'lumotlar avtomatik qo'yiladi, mijoz xohlasa o'zgartiradi
+  // Ism, familiya va manzil profildan; yo'q bo'lsa shu yerda kiritiladi va profilga saqlanadi
   const [form, setForm] = useState(() => ({
-    full_name: user ? `${user.first_name} ${user.last_name}`.trim() : '',
-    phone: user?.phone || '+998 ', address: user?.address || '',
+    first_name: user?.first_name || '', last_name: user?.last_name || '', address: user?.address || '',
     note: '', payment_method: '', delivery_method: '', pickup_branch: null,
   }))
+  const [editing, setEditing] = useState(false)
   // Profil keyinroq yuklansa (sahifa yangilanganda) — bo'sh maydonlarni to'ldiramiz
   useEffect(() => {
     if (!user) return
     setForm(f => ({
       ...f,
-      full_name: f.full_name || `${user.first_name} ${user.last_name}`.trim(),
-      phone: phoneOk(f.phone) ? f.phone : user.phone || f.phone,
+      first_name: f.first_name || user.first_name || '',
+      last_name: f.last_name || user.last_name || '',
       address: f.address || user.address || '',
     }))
   }, [user])
@@ -61,15 +61,20 @@ export default function Checkout() {
 
   const set = k => e => {
     const v = e.target.value
-    setForm({ ...form, [k]: k === 'pickup_branch' ? Number(v) : k === 'phone' ? formatPhone(v) : v })
+    setForm({ ...form, [k]: k === 'pickup_branch' ? Number(v) : v })
     if (fieldErrors[k]) setFieldErrors({ ...fieldErrors, [k]: '' })
   }
 
-  // FISH, telefon, manzil va (olib ketishda) filial majburiy — backend ham tekshiradi
+  // Profil to'liq bo'lsa — qabul qiluvchi qisqa kartochkada, aks holda maydonlar ochiq
+  const complete = !!(user.first_name && user.last_name && user.address && user.phone)
+  const showFields = editing || !complete
+
+  // Ism, familiya, telefon, manzil va (olib ketishda) filial majburiy — backend ham tekshiradi
   const validate = () => {
     const errs = {}
-    if (!form.full_name.trim()) errs.full_name = t('Ism va familiyangizni kiriting.')
-    if (!phoneOk(form.phone)) errs.phone = t("Telefon raqamini to'liq kiriting: +998 XX XXX XX XX.")
+    if (!form.first_name.trim()) errs.first_name = t('Ismingizni kiriting.')
+    if (!form.last_name.trim()) errs.last_name = t('Familiyangizni kiriting.')
+    if (!user.phone) errs.phone = t('Telefon raqamingizni SMS kod bilan tasdiqlang.')
     if (form.address.trim().length < 5) errs.address = t("Manzilni to'liq kiriting.")
     if (delivery === 'pickup' && !branch) errs.pickup_branch = t('Buyurtmani olib ketadigan filialni tanlang.')
     setFieldErrors(errs)
@@ -105,10 +110,17 @@ export default function Checkout() {
     if (!validate()) return
     setSending(true)
     try {
+      // Yangi yoki o'zgargan ma'lumotlar profilga saqlanadi — keyingi safar so'ralmaydi
+      const profile = { first_name: form.first_name.trim(), last_name: form.last_name.trim(), address: form.address.trim() }
+      if (Object.keys(profile).some(k => profile[k] !== (user[k] || '').trim())) {
+        setUser(await api('/auth/me/', { method: 'PATCH', body: profile }))
+      }
       const order = await api('/orders/', {
         method: 'POST',
         body: {
-          ...form, payment_method: payment, delivery_method: delivery,
+          note: form.note, address: profile.address, phone: user.phone,
+          full_name: `${profile.first_name} ${profile.last_name}`,
+          payment_method: payment, delivery_method: delivery,
           pickup_branch: delivery === 'pickup' ? branch?.id : null,
           cart: cart.map(i => ({ product: i.id, quantity: i.qty })),
         },
@@ -119,9 +131,10 @@ export default function Checkout() {
     } catch (err) {
       if (err.status === 401) navigate('/login?next=/checkout')
       const d = err?.data || {}
-      const errs = Object.fromEntries(['full_name', 'phone', 'address', 'pickup_branch']
+      const errs = Object.fromEntries(['first_name', 'last_name', 'full_name', 'phone', 'address', 'pickup_branch']
         .filter(k => d[k]).map(k => [k, [].concat(d[k])[0]]))
       if (Object.keys(errs).length) {
+        setEditing(true)
         setFieldErrors(errs)
       } else {
         setError(errorText(err))
@@ -141,25 +154,48 @@ export default function Checkout() {
       <form className="cart" onSubmit={submit} noValidate>
         <div className="form-card">
           <h3>{t('Qabul qiluvchi')}</h3>
-          <div className="form-row">
-            <label>
-              <span>{t('F.I.Sh.')} <span className="req">*</span></span>
-              <input autoComplete="name" value={form.full_name} onChange={set('full_name')}
-                     className={fieldErrors.full_name ? 'invalid' : ''} />
-              {fieldErrors.full_name && <span className="field-error">{fieldErrors.full_name}</span>}
-            </label>
-            <label>
-              <span>{t('Telefon')} <span className="req">*</span></span>
-              <input type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')}
-                     placeholder="+998 90 123 45 67" className={fieldErrors.phone ? 'invalid' : ''} />
-              {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
-            </label>
-          </div>
-          {!(user.phone && user.address) && (
-            <p className="muted small">
-              {t("Ma'lumotlarni profilda saqlab qo'ysangiz, keyingi safar avtomatik qo'yiladi.")}{' '}
-              <Link to="/profile?next=/checkout">{t("Profilga o'tish")}</Link>
-            </p>
+          {!showFields ? (
+            <div className="recipient">
+              <div>
+                <b>{user.first_name} {user.last_name}</b>
+                <span className="muted">{user.phone}</span>
+                <span className="muted small">📍 {user.address}</span>
+              </div>
+              <button type="button" className="link small" onClick={() => setEditing(true)}>{t("O'zgartirish")}</button>
+            </div>
+          ) : (
+            <>
+              {!complete && (
+                <p className="muted small">{t("Ma'lumotlaringizni bir marta kiriting — profilga saqlanadi va keyingi safar so'ralmaydi.")}</p>
+              )}
+              <div className="form-row">
+                <label>
+                  <span>{t('Ism')} <span className="req">*</span></span>
+                  <input autoComplete="given-name" value={form.first_name} onChange={set('first_name')}
+                         className={fieldErrors.first_name ? 'invalid' : ''} />
+                  {fieldErrors.first_name && <span className="field-error">{fieldErrors.first_name}</span>}
+                </label>
+                <label>
+                  <span>{t('Familiya')} <span className="req">*</span></span>
+                  <input autoComplete="family-name" value={form.last_name} onChange={set('last_name')}
+                         className={fieldErrors.last_name ? 'invalid' : ''} />
+                  {fieldErrors.last_name && <span className="field-error">{fieldErrors.last_name}</span>}
+                </label>
+              </div>
+              <label>
+                <span>{t('Yetkazish manzili')} <span className="req">*</span></span>
+                <textarea rows={2} value={form.address} onChange={set('address')} autoComplete="street-address"
+                          className={fieldErrors.address ? 'invalid' : ''} placeholder={t("Shahar, tuman, ko'cha, uy")} />
+                {fieldErrors.address && <span className="field-error">{fieldErrors.address}</span>}
+              </label>
+              <div className="phone-line">
+                <span className="label-text">{t('Telefon')} <span className="req">*</span></span>
+                {user.phone
+                  ? <span><b>{user.phone}</b> <Link to="/profile#phone" className="small">{t("O'zgartirish")}</Link></span>
+                  : <PhoneVerify onDone={() => setFieldErrors({ ...fieldErrors, phone: '' })} />}
+                {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
+              </div>
+            </>
           )}
 
           <h3>{t('Yetkazib berish')}</h3>
@@ -179,12 +215,6 @@ export default function Checkout() {
               </label>
             ))}
           </div>
-          <label>
-            <span>{delivery === 'courier' ? t('Yetkazish manzili') : t('Manzilingiz')} <span className="req">*</span></span>
-            <textarea required rows={2} value={form.address} onChange={set('address')}
-                      className={fieldErrors.address ? 'invalid' : ''} placeholder={t("Shahar, tuman, ko'cha, uy")} />
-            {fieldErrors.address && <span className="field-error">{fieldErrors.address}</span>}
-          </label>
           {delivery === 'pickup' && (
             <div className="branch-pick">
               <span className="label-text">{t('Qaysi filialdan olib ketasiz?')} <span className="req">*</span></span>

@@ -7,6 +7,7 @@ import { api, applyFormErrors, errorText } from '../api'
 import ImageUpload from '../components/ImageUpload'
 import PaymentGuide from '../components/PaymentGuide'
 import ProviderContacts from '../components/ProviderContacts'
+import OfferCard from '../components/OfferCard'
 import StoreSettingsCard from '../components/StoreSettingsCard'
 import { useCanEdit } from '../auth'
 
@@ -157,6 +158,7 @@ export default function Settings() {
       </div>
 
       <StoreSettingsCard />
+      <OfferCard />
 
       <Card title="To'lov usullari" extra={<Typography.Text type="secondary">{activeCount} ta yoqilgan</Typography.Text>}>
         <Alert

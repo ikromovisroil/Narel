@@ -9,7 +9,7 @@ from rest_framework.test import APITestCase
 
 from catalog.models import Category, Product
 
-from .models import Branch, Order, StoreSettings
+from .models import Branch, CustomerProfile, Order, PhoneCode, StoreSettings
 
 
 class DeliverySettingsTests(APITestCase):
@@ -277,86 +277,6 @@ class BranchTests(APITestCase):
         self.assertEqual(self.client.post("/api/admin/branches/", {"name": "Z", "address": "Z ko'chasi", "phone": "1"}, format="json").status_code, 403)
 
 
-class AccountTests(APITestCase):
-    def register(self, **data):
-        body = {"first_name": "Ali", "last_name": "Valiyev", "phone": "90 123 45 67", "password": "Kuchli-parol-77"}
-        body.update(data)
-        return self.client.post("/api/auth/register/", body, format="json")
-
-    def login(self, username, password="Kuchli-parol-77"):
-        return self.client.post("/api/auth/login/", {"username": username, "password": password}, format="json")
-
-    def test_register_requires_name_and_phone(self):
-        r = self.register(first_name="", phone="123", username="ali")
-        self.assertEqual(r.status_code, 400)
-        self.assertIn("first_name", r.data)
-        self.assertIn("phone", r.data)
-
-    def test_register_with_email_only_and_login_by_email_or_phone(self):
-        r = self.register(email="Ali@Mail.uz")
-        self.assertEqual(r.status_code, 201, r.data)
-        user = User.objects.get(pk=r.data["id"])
-        self.assertEqual(user.username, "ali@mail.uz")
-        self.assertEqual(user.profile.phone, "+998 90 123 45 67")
-        self.assertEqual(self.login("ALI@mail.uz").status_code, 200)
-        self.assertEqual(self.login("+998901234567").status_code, 200)
-        self.assertEqual(self.login("ali@mail.uz", "xato").status_code, 401)
-
-    def test_register_needs_login_or_email_and_unique_values(self):
-        self.assertEqual(self.register().status_code, 400)
-        self.assertEqual(self.register(username="ali", email="a@b.uz").status_code, 201)
-        r = self.register(username="ALI", email="A@b.uz", phone="+998 90 123 45 67")
-        self.assertEqual(r.status_code, 400)
-        self.assertEqual(set(r.data), {"username", "email", "phone"})
-
-    def test_profile_update(self):
-        self.register(username="ali")
-        self.register(username="vali", phone="91 000 00 00", email="v@b.uz")
-        user = User.objects.get(username="ali")
-        self.client.force_authenticate(user)
-        me = self.client.get("/api/auth/me/").json()
-        self.assertEqual(me["phone"], "+998 90 123 45 67")
-        # Band telefon/login/email — xato
-        r = self.client.patch("/api/auth/me/", {"phone": "+998910000000", "username": "Vali", "email": "V@b.uz"}, format="json")
-        self.assertEqual(set(r.data), {"phone", "username", "email"})
-        r = self.client.patch("/api/auth/me/", {"first_name": " "}, format="json")
-        self.assertEqual(r.status_code, 400)
-        r = self.client.patch("/api/auth/me/", {
-            "first_name": "Alisher", "last_name": "Navoiy", "phone": "93-555-44-33", "username": "alisher",
-        }, format="json")
-        self.assertEqual(r.status_code, 200, r.data)
-        self.assertEqual(r.data["phone"], "+998 93 555 44 33")
-        self.assertEqual(r.data["username"], "alisher")
-        self.assertFalse(r.data["is_staff"])
-        # Xodim bo'lib qolishning iloji yo'q
-        self.client.patch("/api/auth/me/", {"is_staff": True, "is_superuser": True}, format="json")
-        user.refresh_from_db()
-        self.assertFalse(user.is_staff or user.is_superuser)
-        self.client.force_authenticate(None)
-        self.assertEqual(self.login("alisher").status_code, 200)
-
-    def test_order_takes_name_and_phone_from_profile(self):
-        StoreSettings.objects.update_or_create(pk=1, defaults={"delivery_enabled": True})
-        cat = Category.objects.create(name="C", slug="c")
-        product = Product.objects.create(name="P", slug="p", category=cat, price=100, stock=5)
-        self.register(username="ali")
-        user = User.objects.get(username="ali")
-        self.client.force_authenticate(user)
-        body = {
-            "address": "Toshkent, Chilonzor 1", "delivery_method": "courier", "payment_method": "cash",
-            "cart": [{"product": product.id, "quantity": 1}],
-        }
-        r = self.client.post("/api/orders/", body, format="json")
-        self.assertEqual(r.status_code, 201, r.data)
-        self.assertEqual((r.data["full_name"], r.data["phone"]), ("Ali Valiyev", "+998 90 123 45 67"))
-        # Profilida telefon yo'q eski hisob — xato bilan
-        old = User.objects.create_user("old", password="x")
-        self.client.force_authenticate(old)
-        r = self.client.post("/api/orders/", body, format="json")
-        self.assertEqual(r.status_code, 400)
-        self.assertIn("full_name", r.data)
-
-
 class ProfileAddressTests(APITestCase):
     def setUp(self):
         StoreSettings.objects.update_or_create(pk=1, defaults={"delivery_enabled": True})
@@ -371,7 +291,8 @@ class ProfileAddressTests(APITestCase):
         return self.client.post("/api/orders/", body, format="json")
 
     def test_saved_address_used_and_can_be_overridden(self):
-        r = self.client.patch("/api/auth/me/", {"phone": "901234567", "address": "  Toshkent, Chilonzor 5  "}, format="json")
+        CustomerProfile.objects.create(user=self.user, phone="+998 90 123 45 67")
+        r = self.client.patch("/api/auth/me/", {"address": "  Toshkent, Chilonzor 5  "}, format="json")
         self.assertEqual(r.data["address"], "Toshkent, Chilonzor 5")
         r = self.order()
         self.assertEqual(r.status_code, 201, r.data)
@@ -386,27 +307,6 @@ class ProfileAddressTests(APITestCase):
         r = self.order(phone="+998 90 123 45 67")
         self.assertEqual(r.status_code, 400)
         self.assertIn("address", r.data)
-
-
-class PasswordChangeTests(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user("ali", password="Eski-parol-123")
-        self.client.force_authenticate(self.user)
-
-    def change(self, old, new):
-        return self.client.post("/api/auth/password/", {"old_password": old, "new_password": new}, format="json")
-
-    def test_change_password(self):
-        self.assertIn("old_password", self.change("xato", "Yangi-parol-456").data)
-        self.assertIn("new_password", self.change("Eski-parol-123", "123").data)
-        self.assertIn("new_password", self.change("Eski-parol-123", "Eski-parol-123").data)
-        self.assertEqual(self.change("Eski-parol-123", "Yangi-parol-456").status_code, 204)
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("Yangi-parol-456"))
-
-    def test_requires_login(self):
-        self.client.force_authenticate(None)
-        self.assertEqual(self.change("a", "b").status_code, 401)
 
 
 @override_settings(GOOGLE_CLIENT_ID="test-client.apps.googleusercontent.com")
@@ -430,11 +330,8 @@ class GoogleLoginTests(APITestCase):
         r = self.google(self.INFO)
         self.assertFalse(r.data["created"])
         self.assertEqual(User.objects.filter(email="ali@gmail.com").count(), 1)
-        # Token bilan profil ochiladi, parolni joriy parolsiz o'rnatadi
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
-        self.assertFalse(self.client.get("/api/auth/me/").json()["has_password"])
-        self.assertEqual(self.client.post("/api/auth/password/", {"new_password": "Yangi-parol-456"}, format="json").status_code, 204)
-        self.assertTrue(self.client.get("/api/auth/me/").json()["has_password"])
+        self.assertEqual(self.client.get("/api/auth/me/").json()["email"], "ali@gmail.com")
 
     def test_links_existing_customer_and_blocks_staff(self):
         User.objects.create_user("ali", email="ali@gmail.com", password="x")
@@ -454,3 +351,202 @@ class GoogleLoginTests(APITestCase):
     @override_settings(GOOGLE_CLIENT_ID="")
     def test_disabled(self):
         self.assertEqual(self.google(self.INFO).status_code, 400)
+
+
+@override_settings(DEBUG=True, ESKIZ_EMAIL="", ESKIZ_PASSWORD="")
+class PhoneCodeLoginTests(APITestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()  # so'rovlar cheklovi testlar orasida saqlanmasin
+
+    def send(self, phone="90 123 45 67", agree=True):
+        return self.client.post("/api/auth/code/send/", {"phone": phone, "agree": agree}, format="json")
+
+    def verify(self, code, phone="+998901234567"):
+        return self.client.post("/api/auth/code/verify/", {"phone": phone, "code": code}, format="json")
+
+    def test_new_phone_creates_account(self):
+        self.assertIn("agree", self.send(agree=False).data)
+        self.assertIn("phone", self.send(phone="123").data)
+        r = self.send()
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertTrue(r.data["is_new"])
+        code = r.data["debug_code"]
+        self.assertEqual(len(code), 6)
+        r = self.verify(code)
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertTrue(r.data["created"])
+        user = User.objects.get(profile__phone="+998 90 123 45 67")
+        self.assertFalse(user.has_usable_password())
+        # Kod ikkinchi marta ishlamaydi
+        self.assertEqual(self.verify(code).status_code, 400)
+
+    def test_existing_customer_logs_in_and_resend_limit(self):
+        user = User.objects.create_user("ali", password="x")
+        CustomerProfile.objects.create(user=user, phone="+998 90 123 45 67")
+        r = self.send()
+        self.assertFalse(r.data["is_new"])
+        self.assertEqual(self.send().status_code, 429)  # 60 soniya o'tmagan
+        r = self.verify(r.data["debug_code"])
+        self.assertFalse(r.data["created"])
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
+        self.assertEqual(self.client.get("/api/auth/me/").json()["username"], "ali")
+
+    def test_wrong_code_attempts_and_expiry(self):
+        code = self.send().data["debug_code"]
+        wrong = "000000" if code != "000000" else "111111"
+        for i in range(4):
+            r = self.verify(wrong)
+            self.assertEqual(r.data["attempts_left"], 4 - i)
+        self.verify(wrong)  # 5-urinish — kod yonadi
+        self.assertEqual(self.verify(code).status_code, 400)
+        # Muddati o'tgan kod
+        PhoneCode.objects.all().delete()
+        code = self.send(phone="91 000 00 00").data["debug_code"]
+        PhoneCode.objects.update(created_at=timezone.now() - timedelta(minutes=5))
+        self.assertEqual(self.verify(code, "+998910000000").status_code, 400)
+
+    def test_staff_cannot_use_phone_login(self):
+        boss = User.objects.create_user("boss", password="x", is_staff=True)
+        CustomerProfile.objects.create(user=boss, phone="+998 90 123 45 67")
+        r = self.verify(self.send().data["debug_code"])
+        self.assertEqual(r.status_code, 400)
+
+    @override_settings(DEBUG=False)
+    def test_no_sms_service_in_production(self):
+        r = self.send()
+        self.assertEqual(r.status_code, 503)
+        self.assertNotIn("debug_code", r.data)
+
+    def test_offer_text(self):
+        StoreSettings.objects.update_or_create(pk=1, defaults={"offer_text": "Shartlar", "offer_text_ru": "Условия"})
+        self.assertEqual(self.client.get("/api/offer/", HTTP_ACCEPT_LANGUAGE="ru").json()["text"], "Условия")
+
+
+def _prime(bits):
+    import secrets as _s
+    def probable(n):
+        if n % 2 == 0:
+            return False
+        d, r = n - 1, 0
+        while d % 2 == 0:
+            d //= 2
+            r += 1
+        for _ in range(20):
+            x = pow(_s.randbelow(n - 3) + 2, d, n)
+            if x in (1, n - 1):
+                continue
+            for _ in range(r - 1):
+                x = pow(x, 2, n)
+                if x == n - 1:
+                    break
+            else:
+                return False
+        return True
+    while True:
+        n = _s.randbits(bits) | (1 << bits - 1) | 1
+        if probable(n):
+            return n
+
+
+@override_settings(APPLE_CLIENT_ID="uz.narel.web")
+class AppleLoginTests(APITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        import base64, hashlib, json
+        from orders.login import SHA256_PREFIX
+        e = 65537
+        while True:
+            p, q = _prime(512), _prime(512)
+            phi = (p - 1) * (q - 1)
+            if p != q and phi % e:
+                break
+        n, d = p * q, pow(e, -1, phi)
+        b64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b"=").decode()
+        cls.keys = [{"kid": "k1", "kty": "RSA", "alg": "RS256", "n": b64(n.to_bytes(128, "big")), "e": b64(e.to_bytes(3, "big"))}]
+
+        def sign(payload, kid="k1"):
+            head = b64(json.dumps({"alg": "RS256", "kid": kid}).encode())
+            body = b64(json.dumps(payload).encode())
+            digest = SHA256_PREFIX + hashlib.sha256(f"{head}.{body}".encode()).digest()
+            em = b"\x00\x01" + b"\xff" * (128 - len(digest) - 3) + b"\x00" + digest
+            sig = pow(int.from_bytes(em, "big"), d, n).to_bytes(128, "big")
+            return f"{head}.{body}.{b64(sig)}"
+        cls.sign = staticmethod(sign)
+
+    def payload(self, **kw):
+        import time
+        data = {"iss": "https://appleid.apple.com", "aud": "uz.narel.web", "sub": "apple-1",
+                "exp": int(time.time()) + 600, "email": "ali@icloud.com", "email_verified": "true"}
+        data.update(kw)
+        return data
+
+    def test_verify_token(self):
+        from orders.login import verify_apple_token
+        self.assertIsNotNone(verify_apple_token(self.sign(self.payload()), self.keys))
+        self.assertIsNone(verify_apple_token(self.sign(self.payload(aud="boshqa")), self.keys))
+        self.assertIsNone(verify_apple_token(self.sign(self.payload(exp=1)), self.keys))
+        self.assertIsNone(verify_apple_token(self.sign(self.payload(), kid="k2"), self.keys))
+        good = self.sign(self.payload())
+        head, body, sig = good.split(".")
+        forged = self.sign(self.payload(sub="hacker")).split(".")[1]
+        self.assertIsNone(verify_apple_token(f"{head}.{forged}.{sig}", self.keys))
+
+    def test_login_creates_then_finds_by_apple_id(self):
+        with patch("orders.login._apple_keys", return_value=self.keys):
+            r = self.client.post("/api/auth/apple/", {"id_token": self.sign(self.payload()), "first_name": "Ali"}, format="json")
+            self.assertEqual(r.status_code, 200, r.data)
+            self.assertTrue(r.data["created"])
+            # Keyingi safar email yashirin bo'lsa ham shu hisob
+            r = self.client.post("/api/auth/apple/", {"id_token": self.sign(self.payload(email=""))}, format="json")
+            self.assertFalse(r.data["created"])
+        self.assertEqual(User.objects.get(profile__apple_id="apple-1").first_name, "Ali")
+
+
+
+class CustomerAccountTests(APITestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_password_login_only_for_staff(self):
+        User.objects.create_user("ali", password="Parol-123456")
+        User.objects.create_user("boss", password="Parol-123456", is_staff=True)
+        login = lambda u: self.client.post("/api/auth/login/", {"username": u, "password": "Parol-123456"}, format="json")
+        self.assertEqual(login("ali").status_code, 401)
+        self.assertEqual(login("boss").status_code, 200)
+        self.assertEqual(self.client.post("/api/auth/register/", {}, format="json").status_code, 404)
+
+    def test_profile_update_cannot_touch_phone_or_login(self):
+        user = User.objects.create_user("ali", first_name="Ali", last_name="V")
+        CustomerProfile.objects.create(user=user, phone="+998 90 123 45 67")
+        User.objects.create_user("vali", email="v@b.uz")
+        self.client.force_authenticate(user)
+        r = self.client.patch("/api/auth/me/", {"email": "V@b.uz"}, format="json")
+        self.assertIn("email", r.data)
+        self.assertEqual(self.client.patch("/api/auth/me/", {"first_name": " "}, format="json").status_code, 400)
+        r = self.client.patch("/api/auth/me/", {
+            "first_name": "Alisher", "phone": "+998 93 555 44 33", "username": "boshqa", "is_staff": True,
+        }, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual((r.data["first_name"], r.data["phone"], r.data["username"]), ("Alisher", "+998 90 123 45 67", "ali"))
+        user.refresh_from_db()
+        self.assertFalse(user.is_staff)
+
+    @override_settings(DEBUG=True, ESKIZ_EMAIL="", ESKIZ_PASSWORD="")
+    def test_change_phone_with_code(self):
+        user = User.objects.create_user("ali")
+        CustomerProfile.objects.create(user=user, phone="+998 90 123 45 67")
+        other = User.objects.create_user("vali")
+        CustomerProfile.objects.create(user=other, phone="+998 91 000 00 00")
+        self.client.force_authenticate(user)
+        send = lambda p: self.client.post("/api/auth/code/send/", {"phone": p, "agree": True}, format="json").data
+        change = lambda p, c: self.client.post("/api/auth/phone/", {"phone": p, "code": c}, format="json")
+        code = send("93 555 44 33")["debug_code"]
+        self.assertEqual(change("+998935554433", "000000" if code != "000000" else "111111").status_code, 400)
+        r = change("+998935554433", code)
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(self.client.get("/api/auth/me/").json()["phone"], "+998 93 555 44 33")
+        # Boshqa mijozning raqami
+        self.assertIn("phone", change("+998910000000", "123456").data)

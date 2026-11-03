@@ -18,6 +18,7 @@ export default function Footer() {
           <Link to="/catalog">{t('Katalog')}</Link>
           <Link to="/catalog?discount=true">{t('Chegirmalar')}</Link>
           <Link to="/orders">{t('Buyurtmalarim')}</Link>
+          <Link to="/oferta">{t('Ommaviy oferta')}</Link>
         </div>
         <div>
           <h4>{t("Bog'lanish")}</h4>

@@ -7,7 +7,8 @@ User = get_user_model()
 
 
 class LoginEmailPhoneBackend(ModelBackend):
-    """Kirish: login, email yoki telefon raqami + parol."""
+    """Parol bilan kirish (login, email yoki telefon) — faqat xodimlar uchun.
+    Mijozlar telefon + SMS kod, Google yoki Apple orqali kiradi."""
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         if username is None:
@@ -15,7 +16,7 @@ class LoginEmailPhoneBackend(ModelBackend):
         if not username or not password:
             return None
         user = self.find_user(username.strip())
-        if user and user.check_password(password) and self.user_can_authenticate(user):
+        if user and user.is_staff and user.check_password(password) and self.user_can_authenticate(user):
             return user
         User().set_password(password)  # vaqt bo'yicha farq bilinmasin
         return None

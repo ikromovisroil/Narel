@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import Logo from './Logo'
@@ -19,7 +19,28 @@ function LangSwitch() {
   )
 }
 
+// Yopishqoq header balandligi --header-h ga yoziladi: yopishqoq bloklar (mundarija, profil menyusi) uning ostida qolmasin
+function useHeaderHeight() {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    const update = () => {
+      const pos = getComputedStyle(el).position
+      const h = pos === 'sticky' || pos === 'fixed' ? el.offsetHeight : 0
+      document.documentElement.style.setProperty('--header-h', `${h}px`)
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    window.addEventListener('resize', update)
+    return () => { ro.disconnect(); window.removeEventListener('resize', update) }
+  }, [])
+  return ref
+}
+
 export default function Header() {
+  const headerRef = useHeaderHeight()
   const { user, logout, cartCount, favorites, storeInfo } = useStore()
   const [categories, setCategories] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
@@ -39,7 +60,7 @@ export default function Header() {
   const activeCat = categories.find(c => c.id === active)
 
   return (
-    <header className="header">
+    <header className="header" ref={headerRef}>
       <div className="topbar">
         <div className="container topbar-inner">
           {storeInfo && (
@@ -72,7 +93,6 @@ export default function Header() {
                 <span className="ico"><UserIcon /></span>{t('Profil')}
               </NavLink>
               <NavLink to="/orders" className="icon-link"><span className="ico"><BoxIcon /></span>{t('Buyurtmalar')}</NavLink>
-              <button className="icon-link" onClick={logout}><span className="ico"><LogoutIcon /></span>{t('Chiqish')}</button>
             </>
           ) : (
             <NavLink to="/login" className="icon-link"><span className="ico"><UserIcon /></span>{t('Kirish')}</NavLink>
@@ -83,6 +103,10 @@ export default function Header() {
           <NavLink to="/cart" className="icon-link">
             <span className="ico"><CartIcon />{cartCount > 0 && <b className="badge">{cartCount}</b>}</span>{t('Savat')}
           </NavLink>
+          {/* Chiqish — oxirida, tasodifan bosilmasligi uchun */}
+          {user && (
+            <button className="icon-link" onClick={logout}><span className="ico"><LogoutIcon /></span>{t('Chiqish')}</button>
+          )}
         </nav>
       </div>
 

@@ -429,7 +429,7 @@ input.invalid, textarea.invalid { border-color: var(--danger); background: #fff7
 
 /* Profil sahifasi */
 .profile-page { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; margin: 8px 0 24px; }
-.profile-side { display: grid; gap: 14px; position: sticky; top: 90px; }
+.profile-side { display: grid; gap: 14px; position: sticky; top: calc(var(--header-h, 0px) + 16px); }
 .profile-main { display: grid; gap: 16px; min-width: 0; }
 .profile-main .page-title { margin: 0; }
 .pcard { background: var(--card); border-radius: var(--radius); padding: 20px; display: grid; gap: 14px; }
@@ -460,8 +460,7 @@ input.invalid, textarea.invalid { border-color: var(--danger); background: #fff7
 .last-order { gap: 2px; color: var(--text); border-left: 4px solid var(--primary); }
 .last-order:hover { box-shadow: 0 2px 10px rgba(31,94,255,.12); }
 .profile-form { display: grid; gap: 16px; }
-.profile-form .pcard { scroll-margin-top: 90px; }
-#security { scroll-margin-top: 90px; }
+.profile-form .pcard, #phone { scroll-margin-top: calc(var(--header-h, 0px) + 16px); }
 .save-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; background: var(--card);
   border-radius: var(--radius); padding: 12px 20px; position: sticky; bottom: 12px; }
 .save-bar.dirty { box-shadow: 0 6px 24px rgba(0,0,0,.12); }
@@ -482,3 +481,62 @@ input.invalid, textarea.invalid { border-color: var(--danger); background: #fff7
 .or-line { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; }
 .or-line::before, .or-line::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .google-btn { display: flex; justify-content: center; min-height: 44px; }
+
+/* Kirish oynasi: telefon + SMS kod */
+.login-wrap { display: grid; place-items: center; padding: 32px 0; }
+.login-card { position: relative; width: 100%; max-width: 420px; background: var(--card); border-radius: 20px; padding: 32px 28px 28px;
+  display: grid; gap: 16px; box-shadow: 0 10px 40px rgba(20,30,60,.08); }
+.login-card h1 { font-size: 24px; text-align: center; margin: 0 24px; line-height: 1.25; }
+.login-close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--border);
+  background: #fff; font-size: 20px; line-height: 1; color: var(--muted); cursor: pointer; }
+.login-close:hover { color: var(--text); border-color: var(--text); }
+.login-form { display: grid; gap: 14px; }
+.login-form label { display: grid; gap: 6px; font-size: 14px; color: var(--text); font-weight: 600; }
+.login-form input[type=tel], .login-form input[type=password], .login-form input:not([type]), .login-form input[type=text] {
+  height: 52px; border-radius: 12px; font-size: 17px; }
+.login-form .agree { display: flex; align-items: flex-start; gap: 10px; font-weight: 500; font-size: 14px; line-height: 1.4; cursor: pointer; }
+.login-form .agree input { width: 20px; height: 20px; margin-top: 1px; flex-shrink: 0; accent-color: var(--primary); }
+.login-form .btn-lg { height: 52px; border-radius: 12px; }
+.login-sub { margin: 0; text-align: center; color: var(--muted); font-size: 14px; }
+.code-input { text-align: center; letter-spacing: 10px; font-size: 26px !important; font-weight: 700; }
+.resend { text-align: center; }
+.login-links { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.login-alt { justify-self: center; font-size: 14px; }
+.social-btn { display: flex; align-items: center; justify-content: center; gap: 10px; height: 48px; border-radius: 12px; border: 0;
+  background: #f1f3f6; color: var(--text); font-weight: 600; font-size: 15px; cursor: pointer; width: 100%; }
+.social-btn:hover { background: #e7eaef; }
+@media (max-width: 480px) {
+  .login-wrap { padding: 12px 0; }
+  .login-card { padding: 28px 16px 20px; border-radius: 16px; }
+  .login-card h1 { font-size: 21px; }
+}
+
+/* Telefonni SMS kod bilan tasdiqlash */
+.phone-verify { display: grid; gap: 8px; }
+.pv-row { display: flex; gap: 8px; }
+.pv-row input { flex: 1; min-width: 0; }
+.pv-row .code-input { font-size: 22px !important; letter-spacing: 8px; }
+.phone-line { display: grid; gap: 6px; }
+.phone-line .label-text { font-size: 14px; color: var(--muted); }
+.phone-current { display: grid; gap: 2px; }
+.phone-current b { font-size: 18px; }
+.recipient > div span.small { margin-top: 2px; }
+@media (max-width: 480px) { .pv-row { flex-direction: column; } }
+
+/* Ommaviy oferta sahifasi */
+.offer-page { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 20px; align-items: start; margin: 8px 0 24px; }
+.offer-toc { position: sticky; top: calc(var(--header-h, 0px) + 16px); gap: 4px; font-size: 14px;
+  max-height: calc(100vh - var(--header-h, 0px) - 32px); overflow: auto; }
+.offer-toc b { margin-bottom: 6px; }
+.offer-toc a { color: var(--text); padding: 5px 8px; border-radius: 6px; }
+.offer-toc a:hover { background: #f1f4f9; color: var(--primary); }
+.offer { gap: 0; line-height: 1.65; }
+.offer .page-title { margin: 0 0 12px; }
+.offer section { scroll-margin-top: calc(var(--header-h, 0px) + 16px); }
+.offer h2 { font-size: 18px; margin: 22px 0 8px; }
+.offer p { margin: 0 0 8px; }
+.offer-intro { font-weight: 500; }
+@media (max-width: 860px) {
+  .offer-page { grid-template-columns: 1fr; }
+  .offer-toc { position: static; max-height: none; }
+}

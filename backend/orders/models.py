@@ -103,6 +103,8 @@ class StoreSettings(models.Model):
     working_hours = models.CharField("Ish vaqti", max_length=100, blank=True, default="Har kuni 9:00 – 21:00")
     working_hours_ru = models.CharField("Ish vaqti (ruscha)", max_length=100, blank=True, default="Ежедневно 9:00 – 21:00")
     map_url = models.URLField("Xaritadagi havola", blank=True)
+    offer_text = models.TextField("Ommaviy oferta", blank=True)
+    offer_text_ru = models.TextField("Ommaviy oferta (ruscha)", blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -151,6 +153,7 @@ class CustomerProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     phone = models.CharField("Telefon", max_length=20, blank=True)
     address = models.CharField("Yetkazish manzili", max_length=255, blank=True)
+    apple_id = models.CharField("Apple ID (sub)", max_length=255, blank=True, db_index=True)
 
     class Meta:
         verbose_name = "Mijoz profili"
@@ -175,3 +178,17 @@ def user_phone(user):
 def user_address(user):
     profile = user_profile(user)
     return profile.address if profile else ""
+
+
+class PhoneCode(models.Model):
+    """Telefon orqali kirish uchun SMS kod (kodning o'zi emas, xeshi saqlanadi)."""
+
+    phone = models.CharField(max_length=20, db_index=True)
+    code_hash = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    used = models.BooleanField(default=False)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]

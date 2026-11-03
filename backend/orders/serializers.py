@@ -1,6 +1,4 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError as DjangoValidationError
 from datetime import timedelta
 
 from django.db import transaction
@@ -49,16 +47,7 @@ MESSAGES = {
         "ru": "Этот email уже используется другим аккаунтом.",
     },
     "username_taken": {"uz": "Bu login band. Boshqasini tanlang.", "ru": "Этот логин занят. Выберите другой."},
-    "username_or_email": {
-        "uz": "Login yoki emaildan birini kiriting.",
-        "ru": "Укажите логин или email.",
-    },
     "required": {"uz": "Bu maydonni to'ldiring.", "ru": "Заполните это поле."},
-    "old_password": {"uz": "Joriy parol noto'g'ri.", "ru": "Текущий пароль неверный."},
-    "same_password": {
-        "uz": "Yangi parol joriy paroldan farq qilishi kerak.",
-        "ru": "Новый пароль должен отличаться от текущего.",
-    },
     "phone": {
         "uz": "Telefon raqamini to'liq kiriting: +998 XX XXX XX XX.",
         "ru": "Укажите номер телефона полностью: +998 XX XXX XX XX.",
@@ -126,64 +115,23 @@ class AccountFieldsMixin:
     validate_last_name = validate_first_name
 
 
-class RegisterSerializer(AccountFieldsMixin, serializers.ModelSerializer):
-    """Ro'yxatdan o'tish: ism, familiya, telefon majburiy; login yoki email (ikkalasi ham bo'lishi mumkin)."""
-
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    phone = serializers.CharField(write_only=True)
-    username = serializers.CharField(required=False, allow_blank=True, max_length=150)
-    email = serializers.EmailField(required=False, allow_blank=True)
-    first_name = serializers.CharField(max_length=150)
-    last_name = serializers.CharField(max_length=150)
-
-    class Meta:
-        model = User
-        fields = ["id", "username", "first_name", "last_name", "email", "phone", "password"]
-
-    def validate(self, attrs):
-        if not attrs.get("username") and not attrs.get("email"):
-            raise serializers.ValidationError({"username": message(self.context.get("request"), "username_or_email")})
-        if not attrs.get("username"):
-            # Email bilan ro'yxatdan o'tganda login sifatida email ishlatiladi
-            attrs["username"] = attrs["email"]
-            if User.objects.filter(username__iexact=attrs["username"]).exists():
-                raise serializers.ValidationError({"email": message(self.context.get("request"), "email_taken")})
-        return attrs
-
-    @transaction.atomic
-    def create(self, validated_data):
-        phone = validated_data.pop("phone")
-        user = User.objects.create_user(**validated_data)
-        CustomerProfile.objects.create(user=user, phone=phone)
-        return user
-
-
 class UserSerializer(AccountFieldsMixin, serializers.ModelSerializer):
-    """Joriy foydalanuvchi: mijoz profilida FISH, telefon, login va emailni o'zgartiradi."""
+    """Joriy foydalanuvchi: mijoz profilida FISH, email va manzilni o'zgartiradi.
+    Telefon — kirish uchun, faqat SMS kod bilan almashtiriladi (/api/auth/phone/)."""
 
     permissions = serializers.SerializerMethodField()
-    phone = serializers.CharField(required=False, allow_blank=False)
-    username = serializers.CharField(required=False, max_length=150)
+    phone = serializers.CharField(read_only=True)
     email = serializers.EmailField(required=False, allow_blank=True)
     # Buyurtma berishda avtomatik qo'yiladi (ixtiyoriy)
     address = serializers.CharField(required=False, allow_blank=True, max_length=255)
-    has_password = serializers.BooleanField(source="has_usable_password", read_only=True)
 
     class Meta:
         model = User
         fields = [
             "id", "username", "first_name", "last_name", "email", "phone", "address",
-            "is_staff", "is_superuser", "permissions", "date_joined", "has_password",
+            "is_staff", "is_superuser", "permissions", "date_joined",
         ]
-        read_only_fields = ["is_staff", "is_superuser", "date_joined"]
-
-    def validate_username(self, value):
-        value = super().validate_username(value)
-        if not value:
-            raise self._err("required")
-        # Djangoning login qoidasi (harf, raqam va @ . + - _)
-        User.username_validator(value)
-        return value
+        read_only_fields = ["username", "is_staff", "is_superuser", "date_joined"]
 
     def to_representation(self, obj):
         data = super().to_representation(obj)
@@ -193,12 +141,10 @@ class UserSerializer(AccountFieldsMixin, serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        extra = {k: validated_data.pop(k) for k in ("phone", "address") if k in validated_data}
-        if "address" in extra:
-            extra["address"] = extra["address"].strip()
+        address = validated_data.pop("address", None)
         user = super().update(instance, validated_data)
-        if extra:
-            user.profile, _ = CustomerProfile.objects.update_or_create(user=user, defaults=extra)
+        if address is not None:
+            user.profile, _ = CustomerProfile.objects.update_or_create(user=user, defaults={"address": address.strip()})
         return user
 
     def get_permissions(self, obj):
@@ -329,22 +275,3 @@ class OrderSerializer(serializers.ModelSerializer):
         order.total = total
         order.save(update_fields=["total", "delivery_price", "expected_date"])
         return order
-
-
-class PasswordChangeSerializer(serializers.Serializer):
-    # Google orqali ochilgan hisobda parol yo'q — birinchi marta joriy parolsiz o'rnatiladi
-    old_password = serializers.CharField(required=False, allow_blank=True)
-    new_password = serializers.CharField()
-
-    def validate(self, attrs):
-        request = self.context["request"]
-        user = request.user
-        if user.has_usable_password() and not user.check_password(attrs.get("old_password") or ""):
-            raise serializers.ValidationError({"old_password": message(request, "old_password")})
-        if attrs.get("old_password") == attrs["new_password"]:
-            raise serializers.ValidationError({"new_password": message(request, "same_password")})
-        try:
-            validate_password(attrs["new_password"], request.user)
-        except DjangoValidationError as e:
-            raise serializers.ValidationError({"new_password": list(e.messages)})
-        return attrs

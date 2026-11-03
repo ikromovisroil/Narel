@@ -43,18 +43,14 @@ export function StoreProvider({ children }) {
     if (tokens.access) api('/auth/me/').then(setUser).catch(() => tokens.clear())
   }, [])
 
-  const login = async (username, password) => {
-    const tk = await api("/auth/login/", { method: "POST", body: { username, password }, auth: false })
-    tokens.set(tk.access, tk.refresh)
-    setUser(await api('/auth/me/'))
-  }
-  // Google tokeni bilan kirish; javobda created: yangi hisob ochildimi
-  const googleLogin = useCallback(async credential => {
-    const r = await api('/auth/google/', { method: 'POST', body: { credential }, auth: false })
+  // Token qaytaradigan kirish (SMS kod, Google, Apple); javobda created: yangi hisob ochildimi
+  const tokenLogin = useCallback(async (path, body) => {
+    const r = await api(path, { method: 'POST', body, auth: false })
     tokens.set(r.access, r.refresh)
     setUser(await api('/auth/me/'))
     return r
   }, [])
+  const googleLogin = useCallback(credential => tokenLogin('/auth/google/', { credential }), [tokenLogin])
   const logout = () => { tokens.clear(); setUser(null) }
 
   const addToCart = (p, qty = 1) => setCart(items => {
@@ -110,7 +106,7 @@ export function StoreProvider({ children }) {
 
   return (
     <StoreContext.Provider value={{
-      user, setUser, login, googleLogin, logout, lang, changeLang, paymentMethods, installmentMonths, monthly, storeInfo,
+      user, setUser, tokenLogin, googleLogin, logout, lang, changeLang, paymentMethods, installmentMonths, monthly, storeInfo,
       cart, cartCount, cartTotal, addToCart, setQty, removeFromCart, clearCart, refreshCart,
       favorites, isFavorite, toggleFavorite, clearFavorites, refreshFavorites,
     }}>

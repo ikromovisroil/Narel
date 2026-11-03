@@ -60,9 +60,15 @@ export default function GoogleButton({ next = '/' }) {
   if (!clientId) return null
   return (
     <>
-      <div className="or-line"><span>{t('yoki')}</span></div>
       <div ref={box} className="google-btn" />
       {error && <div className="error">{error}</div>}
     </>
   )
+}
+
+// "yoki" chizig'i — Google yoki Apple yoqilgan bo'lsa
+export function SocialDivider() {
+  const { storeInfo } = useStore()
+  if (!storeInfo?.google_client_id && !storeInfo?.apple_client_id) return null
+  return <div className="or-line"><span>{t('yoki')}</span></div>
 }
