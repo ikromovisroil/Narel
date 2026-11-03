@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Drawer, Input, Select, Table, Tag, Typography } from 'antd'
+import { Drawer, Input, Table, Tag, Typography } from 'antd'
 import dayjs from 'dayjs'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
@@ -14,11 +14,11 @@ function CustomerOrders({ customer, onClose }) {
 
   return (
     <Drawer open={Boolean(customer)} onClose={onClose} size={560}
-            title={customer && (`${customer.first_name} ${customer.last_name}`.trim() || customer.username)}>
+            title={customer && (`${customer.first_name} ${customer.last_name}`.trim() || customer.phone || 'Mijoz')}>
       {customer && (
         <>
           <Typography.Paragraph type="secondary">
-            Login: {customer.username}{customer.email && ` · ${customer.email}`}{customer.phone && ` · ${customer.phone}`}<br />
+            {[customer.phone, customer.email].filter(Boolean).join(' · ') || '—'}<br />
             Ro'yxatdan o'tgan: {dayjs(customer.date_joined).format('DD.MM.YYYY')}<br />
             Jami xarid: <b>{formatPrice(customer.total_spent)}</b>
           </Typography.Paragraph>
@@ -63,11 +63,8 @@ export default function Customers() {
     <>
       <Typography.Title level={3} style={{ marginTop: 0 }}>Mijozlar</Typography.Title>
       <div className="toolbar">
-        <Input.Search placeholder="Ism, login, email, telefon" allowClear style={{ width: 260 }}
+        <Input.Search placeholder="Ism, telefon, email" allowClear style={{ width: 260 }}
                       defaultValue={filters.search} onSearch={v => update({ search: v })} />
-        <Select placeholder="Turi" allowClear style={{ width: 160 }} value={filters.is_staff}
-                options={[{ value: 'false', label: 'Mijozlar' }, { value: 'true', label: 'Xodimlar' }]}
-                onChange={v => update({ is_staff: v })} />
       </div>
       <Table
         rowKey="id" loading={loading} dataSource={data.results} scroll={{ x: 800 }}
@@ -81,14 +78,10 @@ export default function Customers() {
           {
             title: 'Ism', key: 'name',
             render: (_, c) => (
-              <>
-                <b>{`${c.first_name} ${c.last_name}`.trim() || '—'}</b>
-                {c.is_staff && <Tag color="purple" style={{ marginLeft: 8 }}>Xodim</Tag>}
-              </>
+              <b>{`${c.first_name} ${c.last_name}`.trim() || '—'}</b>
             ),
           },
           { title: 'Telefon', dataIndex: 'phone', render: p => p ? <a href={`tel:${p.replace(/\s/g, '')}`}>{p}</a> : '—' },
-          { title: 'Login', dataIndex: 'username' },
           { title: 'Email', dataIndex: 'email', render: e => e || '—' },
           { title: 'Buyurtmalar', dataIndex: 'orders_count', align: 'center', sorter: true, sortOrder: sortOrder('orders_count') },
           { title: 'Jami xarid', dataIndex: 'total_spent', align: 'right', sorter: true, sortOrder: sortOrder('total_spent'), render: formatPrice },

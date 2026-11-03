@@ -122,3 +122,20 @@ class AdminReplyTests(APITestCase):
         self.assertEqual(self.client.post(f"/api/admin/comments/{self.question.id}/reply/", {"text": " "}, format="json").status_code, 400)
         # Faqat "add" bor — yashira olmaydi
         self.assertEqual(self.client.patch(f"/api/admin/comments/{self.question.id}/", {"is_hidden": True}, format="json").status_code, 403)
+
+
+class AuthorPrivacyTests(APITestCase):
+    def test_login_never_shown_as_author(self):
+        cat = Category.objects.create(name="C", slug="c")
+        product = Product.objects.create(name="P", slug="p", category=cat, price=10)
+        # Telefon bilan ochilgan hisob: login — telefon raqami, ism yo'q
+        user = User.objects.create_user("998901234567")
+        Comment.objects.create(product=product, user=user, text="Zo'r", rating=5)
+        data = self.client.get("/api/products/p/comments/").json()
+        rows = data["results"] if isinstance(data, dict) and "results" in data else data
+        author = rows[0]["author"]
+        self.assertEqual(author, "Xaridor")
+        ru = self.client.get("/api/products/p/comments/", HTTP_ACCEPT_LANGUAGE="ru").json()
+        rows = ru["results"] if isinstance(ru, dict) and "results" in ru else ru
+        self.assertEqual(rows[0]["author"], "Покупатель")
+        self.assertNotIn("998901234567", str(ru))

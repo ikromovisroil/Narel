@@ -179,7 +179,7 @@ export default function Comments() {
             render: (_, c) => (
               <span style={{ display: 'grid' }}>
                 <b>{c.author} {c.is_staff && <Tag color="orange" icon={<ShopFilled />} style={{ marginLeft: 4 }}>Do'kon</Tag>}</b>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>{c.username}</Typography.Text>
+                {c.phone && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{c.phone}</Typography.Text>}
               </span>
             ),
           },

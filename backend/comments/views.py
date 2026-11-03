@@ -85,7 +85,7 @@ class AdminCommentViewSet(
 
     section = "comments"
     serializer_class = AdminCommentSerializer
-    search_fields = ["text", "user__username", "user__first_name", "product__name"]
+    search_fields = ["text", "user__first_name", "user__last_name", "user__profile__phone", "product__name"]
     filterset_fields = ["is_hidden", "product", "rating", "parent"]
 
     def get_queryset(self):

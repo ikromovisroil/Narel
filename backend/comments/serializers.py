@@ -1,10 +1,18 @@
 from rest_framework import serializers
 
+from catalog.i18n import get_lang
+
 from .models import Comment
 
 
-def author_name(user):
-    return f"{user.first_name} {user.last_name}".strip() or user.username
+def author_name(user, request=None):
+    """Ism-familiya; bo'lmasa "Xaridor" (xodim bo'lsa "Narel"). Login (mijozda — telefon raqami) hech qachon ko'rinmaydi."""
+    name = f"{user.first_name} {user.last_name}".strip()
+    if name:
+        return name
+    if user.is_staff:
+        return "Narel"
+    return "Покупатель" if get_lang(request) == "ru" else "Xaridor"
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -22,7 +30,7 @@ class CommentSerializer(serializers.ModelSerializer):
         extra_kwargs = {"parent": {"required": False, "allow_null": True}}
 
     def get_author(self, obj):
-        return author_name(obj.user)
+        return author_name(obj.user, self.context.get("request"))
 
     def get_is_staff(self, obj):
         return obj.user.is_staff
@@ -60,7 +68,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class AdminCommentSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
-    username = serializers.CharField(source="user.username", read_only=True)
+    phone = serializers.CharField(source="user.profile.phone", read_only=True, default="")
     product_name = serializers.CharField(source="product.name", read_only=True)
     product_slug = serializers.CharField(source="product.slug", read_only=True)
     parent_text = serializers.CharField(source="parent.text", read_only=True, default=None)
@@ -71,10 +79,10 @@ class AdminCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = [
-            "id", "product", "product_name", "product_slug", "author", "username", "is_staff", "parent",
+            "id", "product", "product_name", "product_slug", "author", "phone", "is_staff", "parent",
             "parent_text", "text", "rating", "is_hidden", "replies_count", "staff_replied", "created_at",
         ]
         read_only_fields = [f for f in fields if f != "is_hidden"]
 
     def get_author(self, obj):
-        return author_name(obj.user)
+        return author_name(obj.user, self.context.get("request"))

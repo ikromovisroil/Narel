@@ -148,7 +148,7 @@ class OrderViewSet(
 ):
     section = "orders"
     serializer_class = s.OrderSerializer
-    search_fields = ["id", "full_name", "phone", "user__username"]
+    search_fields = ["id", "full_name", "phone"]
     ordering_fields = ["created_at", "total"]
     filterset_fields = {
         "status": ["exact"], "payment_method": ["exact"], "delivery_method": ["exact"],
@@ -167,13 +167,13 @@ class OrderViewSet(
 class CustomerViewSet(AdminMixin, viewsets.ReadOnlyModelViewSet):
     section = "customers"
     serializer_class = s.CustomerSerializer
-    search_fields = ["username", "first_name", "last_name", "email", "profile__phone"]
+    search_fields = ["first_name", "last_name", "email", "profile__phone"]
     ordering_fields = ["date_joined", "orders_count", "total_spent"]
-    filterset_fields = ["is_staff"]
 
     def get_queryset(self):
+        # Faqat mijozlar — xodimlar alohida "Xodimlar" bo'limida
         paid = ~Q(orders__status=Order.Status.CANCELLED)
-        return User.objects.annotate(
+        return User.objects.filter(is_staff=False).annotate(
             orders_count=Count("orders", distinct=True),
             total_spent=Coalesce(Sum("orders__total", filter=paid), MONEY_ZERO),
         ).order_by("-date_joined")

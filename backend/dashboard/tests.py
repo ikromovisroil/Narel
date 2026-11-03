@@ -199,10 +199,21 @@ class AdminApiTests(APITestCase):
     def test_customers_totals(self):
         Order.objects.create(user=self.user, full_name="A", phone="1", total=500)
         Order.objects.create(user=self.user, full_name="A", phone="1", total=200, status="cancelled")
-        r = self.client.get("/api/admin/customers/?search=client")
+        self.user.first_name = "Klient"
+        self.user.save(update_fields=["first_name"])
+        r = self.client.get("/api/admin/customers/?search=Klient")
         row = r.data["results"][0]
         self.assertEqual(row["orders_count"], 2)
         self.assertEqual(int(row["total_spent"]), 500)
+
+    def test_customers_list_excludes_staff(self):
+        User.objects.create_user("xodim", password="x", is_staff=True)
+        r = self.client.get("/api/admin/customers/?page_size=200")
+        names = [c["username"] for c in r.data["results"]]
+        self.assertIn("client", names)
+        self.assertNotIn("xodim", names)
+        self.assertTrue(all(not c["is_staff"] for c in r.data["results"]))
+        self.assertEqual(r.data["count"], User.objects.filter(is_staff=False).count())
 
     def test_me_cannot_make_self_staff(self):
         self.client.force_authenticate(self.user)

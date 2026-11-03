@@ -162,7 +162,6 @@ function OrderDrawer({ id, onClose, onChanged }) {
           <Descriptions column={1} bordered size="small" items={[
             { label: 'Mijoz', children: order.full_name },
             { label: 'Telefon', children: <a href={`tel:${order.phone}`}>{order.phone}</a> },
-            { label: 'Hisob', children: order.username },
             { label: 'Yetkazish', children: DELIVERY[order.delivery_method] },
             ...(order.delivery_method === 'pickup' ? [{ label: 'Filial', children: <b>{order.pickup_point || '—'}</b> }] : []),
             { label: 'Manzil', children: order.address || '—' },
