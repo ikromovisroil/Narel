@@ -1,0 +1,101 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { api } from '../api'
+import ProductCard from '../components/ProductCard'
+
+function BannerSlider({ banners }) {
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    if (banners.length < 2) return
+    const t = setInterval(() => setI(x => (x + 1) % banners.length), 5000)
+    return () => clearInterval(t)
+  }, [banners.length])
+  if (!banners.length) return null
+  const b = banners[i]
+  return (
+    <div className="slider" style={b.image ? { backgroundImage: `url(${b.image})` } : undefined}>
+      <div className={`slide slide-${i % 3}`}>
+        <h2>{b.title}</h2>
+        {b.subtitle && <p>{b.subtitle}</p>}
+        <Link className="btn btn-light" to={b.link || '/catalog'}>Batafsil</Link>
+      </div>
+      <div className="dots">
+        {banners.map((_, k) => <button key={k} className={k === i ? 'on' : ''} onClick={() => setI(k)} />)}
+      </div>
+    </div>
+  )
+}
+
+function Section({ title, query, more }) {
+  const [items, setItems] = useState(null)
+  useEffect(() => {
+    api(`/products/?${query}`, { auth: false }).then(r => setItems(r.results)).catch(() => setItems([]))
+  }, [query])
+  if (items && !items.length) return null
+  return (
+    <section className="section">
+      <div className="section-head">
+        <h2>{title}</h2>
+        <Link to={more}>Barchasi ›</Link>
+      </div>
+      <div className="grid grid-scroll">
+        {items ? items.slice(0, 10).map(p => <ProductCard key={p.id} p={p} />)
+               : <div className="muted">Yuklanmoqda...</div>}
+      </div>
+    </section>
+  )
+}
+
+export default function Home() {
+  const [banners, setBanners] = useState([])
+  const [categories, setCategories] = useState([])
+  const [brands, setBrands] = useState([])
+
+  useEffect(() => {
+    api('/banners/', { auth: false }).then(setBanners).catch(() => {})
+    api('/categories/', { auth: false }).then(setCategories).catch(() => {})
+    api('/brands/', { auth: false }).then(setBrands).catch(() => {})
+  }, [])
+
+  return (
+    <>
+      <BannerSlider banners={banners} />
+
+      <div className="perks">
+        <div><b>🚚 Bepul yetkazish</b><span>Toshkent bo'ylab 1 kunda</span></div>
+        <div><b>💳 Muddatli to'lov</b><span>12 oygacha bo'lib to'lash</span></div>
+        <div><b>🛡 Rasmiy kafolat</b><span>Barcha mahsulotlarga</span></div>
+        <div><b>↩ Qaytarish</b><span>10 kun ichida</span></div>
+      </div>
+
+      <section className="section">
+        <div className="section-head"><h2>Ommabop kategoriyalar</h2></div>
+        <div className="cat-tiles">
+          {categories.flatMap(c => c.children).slice(0, 12).map(c => (
+            <Link key={c.id} to={`/catalog/${c.slug}`} className="cat-tile">
+              {c.icon ? <img src={c.icon} alt="" /> : <span className="cat-ico">{c.name[0]}</span>}
+              {c.name}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <Section title="🔥 Xit savdo" query="is_hit=true" more="/catalog?is_hit=true" />
+      <Section title="💰 Chegirmalar" query="discount=true" more="/catalog?discount=true" />
+      <Section title="✨ Yangi mahsulotlar" query="is_new=true" more="/catalog?is_new=true" />
+
+      {brands.length > 0 && (
+        <section className="section">
+          <div className="section-head"><h2>Brendlar</h2></div>
+          <div className="brands">
+            {brands.map(b => (
+              <Link key={b.id} to={`/catalog?brand=${b.slug}`} className="brand">
+                {b.logo ? <img src={b.logo} alt={b.name} /> : b.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  )
+}
