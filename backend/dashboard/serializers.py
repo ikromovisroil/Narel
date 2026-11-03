@@ -4,6 +4,7 @@ from django.db.models import F
 from rest_framework import serializers
 
 from catalog.models import Banner, Brand, Category, Product, ProductImage, ProductSpec
+from catalog.ordering import place, renumber
 from catalog.utils import unique_slug
 from orders.models import Order
 from orders.serializers import OrderItemSerializer
@@ -12,35 +13,59 @@ User = get_user_model()
 
 
 class AutoSlugMixin:
-    """slug bo'sh qolsa nomdan avtomatik yasaladi."""
+    """slug foydalanuvchidan so'ralmaydi: yaratilganda nomdan avtomatik yasaladi
+    va keyin o'zgarmaydi (saytdagi havolalar buzilmasligi uchun)."""
 
-    slug_source = "name"
-
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
-        if not attrs.get("slug"):
-            text = attrs.get(self.slug_source) or getattr(self.instance, self.slug_source, "")
-            if self.instance and "slug" not in attrs:
-                return attrs
-            attrs["slug"] = unique_slug(
-                self.Meta.model, text, self.instance.pk if self.instance else None
-            )
-        return attrs
+    def create(self, validated_data):
+        validated_data["slug"] = unique_slug(self.Meta.model, validated_data["name"])
+        return super().create(validated_data)
 
 
-class CategorySerializer(AutoSlugMixin, serializers.ModelSerializer):
-    slug = serializers.SlugField(required=False, allow_blank=True)
+class OrderedMixin:
+    """`order` maydoni: yozuv shu o'ringa qo'yiladi, qolganlar suriladi.
+    Bo'sh qoldirilsa yangi yozuv guruh oxiriga qo'shiladi."""
+
+    def scope(self, instance):
+        return self.Meta.model.objects.all()
+
+    @transaction.atomic
+    def create(self, validated_data):
+        position = validated_data.pop("order", None)
+        instance = super().create(validated_data)
+        place(instance, position, self.scope(instance))
+        return instance
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        position = validated_data.pop("order", None)
+        old_scope = self.scope(instance)
+        old_key = self.scope_key(instance)
+        instance = super().update(instance, validated_data)
+        moved = self.scope_key(instance) != old_key
+        if moved:
+            renumber(old_scope, exclude_pk=instance.pk)  # eski guruhda bo'shliq qolmasin
+        if moved or position is not None:
+            place(instance, position, self.scope(instance))
+        return instance
+
+    def scope_key(self, instance):
+        return None
+
+
+class CategorySerializer(OrderedMixin, AutoSlugMixin, serializers.ModelSerializer):
     products_count = serializers.IntegerField(read_only=True)
+    order = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+
+    def scope(self, instance):
+        return Category.objects.filter(parent_id=instance.parent_id)
+
+    def scope_key(self, instance):
+        return instance.parent_id
 
     class Meta:
         model = Category
-        fields = ["id", "name", "slug", "parent", "icon", "order", "products_count"]
-        read_only_fields = ["icon"]
-
-    def validate_slug(self, value):
-        if value and Category.objects.exclude(pk=getattr(self.instance, "pk", None)).filter(slug=value).exists():
-            raise serializers.ValidationError("Bu slug band.")
-        return value
+        fields = ["id", "name", "name_ru", "slug", "parent", "icon", "order", "products_count"]
+        read_only_fields = ["slug", "icon"]
 
     def validate_parent(self, parent):
         node = parent
@@ -52,24 +77,20 @@ class CategorySerializer(AutoSlugMixin, serializers.ModelSerializer):
 
 
 class BrandSerializer(AutoSlugMixin, serializers.ModelSerializer):
-    slug = serializers.SlugField(required=False, allow_blank=True)
     products_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Brand
         fields = ["id", "name", "slug", "logo", "products_count"]
-        read_only_fields = ["logo"]
-
-    def validate_slug(self, value):
-        if value and Brand.objects.exclude(pk=getattr(self.instance, "pk", None)).filter(slug=value).exists():
-            raise serializers.ValidationError("Bu slug band.")
-        return value
+        read_only_fields = ["slug", "logo"]
 
 
-class BannerSerializer(serializers.ModelSerializer):
+class BannerSerializer(OrderedMixin, serializers.ModelSerializer):
+    order = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+
     class Meta:
         model = Banner
-        fields = ["id", "title", "subtitle", "image", "link", "order", "is_active"]
+        fields = ["id", "title", "title_ru", "subtitle", "subtitle_ru", "image", "link", "order", "is_active"]
         read_only_fields = ["image"]
 
 
@@ -82,11 +103,10 @@ class ProductImageSerializer(serializers.ModelSerializer):
 class ProductSpecSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSpec
-        fields = ["name", "value"]
+        fields = ["name", "value", "name_ru", "value_ru"]
 
 
 class ProductSerializer(AutoSlugMixin, serializers.ModelSerializer):
-    slug = serializers.SlugField(required=False, allow_blank=True, max_length=220)
     specs = ProductSpecSerializer(many=True, required=False)
     images = ProductImageSerializer(many=True, read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
@@ -96,16 +116,11 @@ class ProductSerializer(AutoSlugMixin, serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            "id", "name", "slug", "sku", "description", "category", "category_name",
+            "id", "name", "name_ru", "slug", "sku", "description", "description_ru", "category", "category_name",
             "brand", "brand_name", "price", "old_price", "stock", "is_active", "is_hit",
             "is_new", "image", "images", "specs", "sold", "created_at", "updated_at",
         ]
-        read_only_fields = ["image", "created_at", "updated_at"]
-
-    def validate_slug(self, value):
-        if value and Product.objects.exclude(pk=getattr(self.instance, "pk", None)).filter(slug=value).exists():
-            raise serializers.ValidationError("Bu slug band.")
-        return value
+        read_only_fields = ["slug", "image", "created_at", "updated_at"]
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -120,7 +135,10 @@ class ProductSerializer(AutoSlugMixin, serializers.ModelSerializer):
             return
         product.specs.all().delete()
         ProductSpec.objects.bulk_create(
-            ProductSpec(product=product, name=s["name"], value=s["value"], order=i)
+            ProductSpec(
+                product=product, name=s["name"], value=s["value"],
+                name_ru=s.get("name_ru", ""), value_ru=s.get("value_ru", ""), order=i,
+            )
             for i, s in enumerate(specs)
         )
 

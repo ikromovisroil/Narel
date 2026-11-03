@@ -90,6 +90,86 @@ BANNERS = [
     ("Maishiy texnika haftaligi", "Muzlatgich va kir yuvish mashinalariga maxsus narxlar"),
 ]
 
+# ---- Ruscha tarjimalar (bo'sh ruscha maydonlar to'ldiriladi) ----
+
+CATEGORIES_RU = {
+    "Smartfonlar va gadjetlar": "Смартфоны и гаджеты", "Smartfonlar": "Смартфоны",
+    "Planshetlar": "Планшеты", "Aqlli soatlar": "Умные часы", "Quloqchinlar": "Наушники",
+    "Noutbuklar va kompyuterlar": "Ноутбуки и компьютеры", "Noutbuklar": "Ноутбуки",
+    "Monitorlar": "Мониторы", "Printerlar": "Принтеры",
+    "Televizorlar va audio": "Телевизоры и аудио", "Televizorlar": "Телевизоры", "Kolonkalar": "Колонки",
+    "Maishiy texnika": "Бытовая техника", "Muzlatgichlar": "Холодильники",
+    "Kir yuvish mashinalari": "Стиральные машины", "Changyutgichlar": "Пылесосы",
+    "Konditsionerlar": "Кондиционеры", "Oshxona texnikasi": "Техника для кухни",
+    "Mikroto'lqinli pechlar": "Микроволновые печи", "Choynaklar": "Чайники", "Blenderlar": "Блендеры",
+}
+
+PRODUCTS_RU = {
+    "Sony SRS-XB100 portativ kolonka": "Портативная колонка Sony SRS-XB100",
+    "Samsung RB38 No Frost muzlatgichi": "Холодильник Samsung RB38 No Frost",
+    "Artel HD 455 muzlatgichi": "Холодильник Artel HD 455",
+    "LG F2V5 8 kg kir yuvish mashinasi": "Стиральная машина LG F2V5 8 кг",
+    "Artel WF60 6 kg kir yuvish mashinasi": "Стиральная машина Artel WF60 6 кг",
+    "Philips 3000 Series changyutgichi": "Пылесос Philips 3000 Series",
+    "Artel Inverter 12 konditsioner": "Кондиционер Artel Inverter 12",
+    "Samsung MS23 mikroto'lqinli pech": "Микроволновая печь Samsung MS23",
+    "Philips HD9350 elektr choynak": "Электрический чайник Philips HD9350",
+    "Philips HR3573 blender": "Блендер Philips HR3573",
+}
+
+SPEC_NAMES_RU = {
+    "Ekran": "Экран", "Protsessor": "Процессор", "Xotira": "Память", "Kamera": "Камера",
+    "Batareya": "Аккумулятор", "Korpus": "Корпус", "Suv o'tkazmasligi": "Влагозащита",
+    "Turi": "Тип", "Shovqinni bostirish": "Шумоподавление", "Ishlash vaqti": "Время работы",
+    "Operativ xotira": "Оперативная память", "Videokarta": "Видеокарта", "Diagonal": "Диагональ",
+    "Ruxsat": "Разрешение", "Chastota": "Частота", "Matritsa": "Матрица", "Ulanish": "Подключение",
+    "Hajmi": "Объём", "Tizim": "Система", "Energiya sinfi": "Класс энергопотребления",
+    "Rangi": "Цвет", "Yuklash": "Загрузка", "Aylanish": "Отжим", "Inverter motor": "Инверторный мотор",
+    "Nam tozalash": "Влажная уборка", "Quvvati": "Мощность", "Maydon": "Площадь",
+    "Inverter": "Инвертор", "Idish": "Чаша",
+}
+
+SPEC_VALUES_RU = {
+    "45 mm alyuminiy": "45 мм, алюминий", "44 mm": "44 мм", "Bor (ANC)": "Есть (ANC)",
+    "Quloq ustki": "Накладные", "30 soat": "30 часов", "Lazer, oq-qora": "Лазерный, чёрно-белый",
+    "Bor": "Есть", "Oq": "Белый", "Robot": "Робот", "Konteynerli": "С контейнером",
+    "Zanglamas po'lat": "Нержавеющая сталь", "8 kg": "8 кг", "6 kg": "6 кг",
+    "1200 ayl/min": "1200 об/мин", "1000 ayl/min": "1000 об/мин", "35 m²": "35 м²",
+    "385 L": "385 л", "350 L": "350 л", "23 L": "23 л", "1.7 L": "1,7 л", "2 L": "2 л",
+}
+
+BANNERS_RU = {
+    "Smartfonlarga 20% gacha chegirma": ("Скидки до 20% на смартфоны", "Только на этой неделе: новейшие модели по выгодной цене"),
+    "0% ustama bilan muddatli to'lov": ("Рассрочка без переплаты", "Оплачивайте частями до 12 месяцев"),
+    "Maishiy texnika haftaligi": ("Неделя бытовой техники", "Специальные цены на холодильники и стиральные машины"),
+}
+
+
+def fill_russian():
+    """Bo'sh ruscha maydonlarni demo tarjimalar bilan to'ldiradi (qo'lda kiritilganiga tegmaydi)."""
+    for cat in Category.objects.filter(name_ru=""):
+        if cat.name in CATEGORIES_RU:
+            cat.name_ru = CATEGORIES_RU[cat.name]
+            cat.save(update_fields=["name_ru"])
+    for p in Product.objects.all():
+        changed = []
+        if not p.name_ru and p.name in PRODUCTS_RU:
+            p.name_ru = PRODUCTS_RU[p.name]
+            changed.append("name_ru")
+        if not p.description_ru and p.description.endswith("bo'ylab."):
+            p.description_ru = f"{p.name_ru or p.name} — с официальной гарантией. Доставка по всему Узбекистану."
+            changed.append("description_ru")
+        if changed:
+            p.save(update_fields=changed)
+    for spec in ProductSpec.objects.filter(name_ru=""):
+        spec.name_ru = SPEC_NAMES_RU.get(spec.name, "")
+        spec.value_ru = spec.value_ru or SPEC_VALUES_RU.get(spec.value, "")
+        spec.save(update_fields=["name_ru", "value_ru"])
+    for b in Banner.objects.filter(title_ru=""):
+        if b.title in BANNERS_RU:
+            b.title_ru, b.subtitle_ru = BANNERS_RU[b.title]
+            b.save(update_fields=["title_ru", "subtitle_ru"])
+
 
 class Command(BaseCommand):
     help = "Demo kategoriyalar, brendlar, mahsulotlar va bannerlarni qo'shadi"
@@ -104,11 +184,11 @@ class Command(BaseCommand):
         cats = {}
         for i, (parent_name, children) in enumerate(CATEGORIES.items()):
             parent, _ = Category.objects.get_or_create(
-                slug=uslug(parent_name), defaults={"name": parent_name, "order": i}
+                slug=uslug(parent_name), defaults={"name": parent_name, "order": i + 1}
             )
             for j, child in enumerate(children):
                 cats[child], _ = Category.objects.get_or_create(
-                    slug=uslug(child), defaults={"name": child, "parent": parent, "order": j}
+                    slug=uslug(child), defaults={"name": child, "parent": parent, "order": j + 1}
                 )
 
         brands = {
@@ -135,9 +215,10 @@ class Command(BaseCommand):
                 )
 
         for i, (title, subtitle) in enumerate(BANNERS):
-            Banner.objects.get_or_create(title=title, defaults={"subtitle": subtitle, "order": i})
+            Banner.objects.get_or_create(title=title, defaults={"subtitle": subtitle, "order": i + 1})
 
-        self.stdout.write(self.style.SUCCESS(f"Tayyor: {created} ta yangi mahsulot qo'shildi."))
+        fill_russian()
+        self.stdout.write(self.style.SUCCESS(f"Tayyor: {created} ta yangi mahsulot qo'shildi, ruscha tarjimalar to'ldirildi."))
 
         if opts["orders"]:
             self.demo_orders(opts["orders"])

@@ -4,8 +4,10 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { api, applyFormErrors, errorText } from '../api'
 import ImageUpload from '../components/ImageUpload'
+import { usePerm } from '../auth'
 
 export default function Brands() {
+  const perm = usePerm('brands')
   const { message } = App.useApp()
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(true)
@@ -53,11 +55,14 @@ export default function Brands() {
 
   const rows = list.filter(b => b.name.toLowerCase().includes(search.toLowerCase()))
 
+  // Yangi yozuv — qo'shish, mavjudi — tahrirlash huquqi
+  const canSave = editing?.id ? perm.change : perm.add
+
   return (
     <>
       <div className="page-head">
         <Typography.Title level={3} style={{ margin: 0 }}>Brendlar</Typography.Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>Brend qo'shish</Button>
+        {perm.add && <Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>Brend qo'shish</Button>}
       </div>
       <div className="toolbar">
         <Input.Search placeholder="Qidirish" allowClear style={{ width: 240 }} onChange={e => setSearch(e.target.value)} />
@@ -71,7 +76,6 @@ export default function Brands() {
             render: l => (l ? <img src={l} alt="" className="thumb" /> : <div className="thumb">—</div>),
           },
           { title: 'Nomi', dataIndex: 'name', render: n => <b>{n}</b> },
-          { title: 'Slug', dataIndex: 'slug', responsive: ['md'] },
           {
             title: 'Mahsulotlar', dataIndex: 'products_count', align: 'center',
             render: (n, b) => <Link to={`/products?brand=${b.id}`}><Tag>{n}</Tag></Link>,
@@ -81,10 +85,12 @@ export default function Brands() {
             render: (_, b) => (
               <Space>
                 <Button size="small" icon={<EditOutlined />} onClick={() => open(b)} />
-                <Popconfirm title={`"${b.name}" o'chirilsinmi?`} description="Mahsulotlardan brend olib tashlanadi."
-                            okText="Ha" cancelText="Yo'q" okButtonProps={{ danger: true }} onConfirm={() => remove(b)}>
-                  <Button size="small" danger icon={<DeleteOutlined />} />
-                </Popconfirm>
+                {perm.delete && (
+                  <Popconfirm title={`"${b.name}" o'chirilsinmi?`} description="Mahsulotlardan brend olib tashlanadi."
+                              okText="Ha" cancelText="Yo'q" okButtonProps={{ danger: true }} onConfirm={() => remove(b)}>
+                    <Button size="small" danger icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                )}
               </Space>
             ),
           },
@@ -94,14 +100,13 @@ export default function Brands() {
       <Modal
         open={editing !== null} title={editing?.id ? 'Brendni tahrirlash' : 'Yangi brend'}
         onCancel={() => setEditing(null)} onOk={() => form.submit()} okText="Saqlash" cancelText="Yopish"
-        confirmLoading={saving} destroyOnHidden
+        confirmLoading={saving} destroyOnHidden okButtonProps={{ style: canSave ? undefined : { display: 'none' } }}
       >
-        <Form form={form} layout="vertical" onFinish={save}>
+        <Form form={form} layout="vertical" onFinish={save} disabled={!canSave}>
           <Form.Item name="name" label="Nomi" rules={[{ required: true, message: 'Nomini kiriting' }]}><Input /></Form.Item>
-          <Form.Item name="slug" label="Slug" extra="Bo'sh qoldirsangiz avtomatik yasaladi"><Input /></Form.Item>
           <Form.Item label="Logo" extra={!editing?.id && 'Logoni brend saqlangandan keyin yuklaysiz'}>
             {editing?.id && (
-              <ImageUpload path={`/admin/brands/${editing.id}/upload/`} value={editing.logo}
+              <ImageUpload rule="brand" path={`/admin/brands/${editing.id}/upload/`} value={editing.logo}
                            onChange={b => { setEditing(b); load() }} label="Logo yuklash" />
             )}
           </Form.Item>

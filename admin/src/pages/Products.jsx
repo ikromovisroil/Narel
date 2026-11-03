@@ -4,8 +4,11 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, errorText } from '../api'
 import { formatPrice } from '../utils'
+import { useCanEdit, usePerm } from '../auth'
 
 export default function Products() {
+  const canEdit = useCanEdit('products')
+  const perm = usePerm('products')
   const { message } = App.useApp()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -62,13 +65,15 @@ export default function Products() {
     <>
       <div className="page-head">
         <Typography.Title level={3} style={{ margin: 0 }}>Mahsulotlar</Typography.Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/products/new')}>
-          Mahsulot qo'shish
-        </Button>
+        {perm.add && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/products/new')}>
+            Mahsulot qo'shish
+          </Button>
+        )}
       </div>
 
       <div className="toolbar">
-        <Input.Search placeholder="Nomi, artikul, brend" allowClear value={search} style={{ width: 240 }}
+        <Input.Search placeholder="Nomi, mahsulot kodi, brend" allowClear value={search} style={{ width: 240 }}
                       onChange={e => setSearch(e.target.value)} onSearch={v => update({ search: v })} />
         <Select placeholder="Kategoriya" allowClear showSearch optionFilterProp="label" style={{ width: 200 }}
                 value={filters.category ? Number(filters.category) : undefined}
@@ -139,17 +144,19 @@ export default function Products() {
           },
           {
             title: 'Faol', dataIndex: 'is_active', align: 'center',
-            render: (v, p) => <Switch size="small" checked={v} onChange={c => patch(p.id, { is_active: c })} />,
+            render: (v, p) => <Switch size="small" checked={v} disabled={!canEdit} onChange={c => patch(p.id, { is_active: c })} />,
           },
           {
             title: '', key: 'actions', width: 100, fixed: 'right',
             render: (_, p) => (
               <Space>
                 <Button icon={<EditOutlined />} onClick={() => navigate(`/products/${p.id}`)} />
-                <Popconfirm title="Mahsulotni o'chirasizmi?" okText="Ha" cancelText="Yo'q"
-                            okButtonProps={{ danger: true }} onConfirm={() => remove(p.id)}>
-                  <Button danger icon={<DeleteOutlined />} />
-                </Popconfirm>
+                {perm.delete && (
+                  <Popconfirm title="Mahsulotni o'chirasizmi?" okText="Ha" cancelText="Yo'q"
+                              okButtonProps={{ danger: true }} onConfirm={() => remove(p.id)}>
+                    <Button danger icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                )}
               </Space>
             ),
           },

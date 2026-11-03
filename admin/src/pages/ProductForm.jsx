@@ -7,7 +7,9 @@ import { DeleteOutlined, HolderOutlined, PlusOutlined } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, applyFormErrors, errorText, upload } from '../api'
 import ImageUpload from '../components/ImageUpload'
+import { acceptFor, checkImage, useImageRule } from '../imageRules'
 import { formatPrice, moneyInput } from '../utils'
+import { usePerm } from '../auth'
 
 export function categoryTree(list) {
   const byParent = {}
@@ -20,14 +22,20 @@ export function categoryTree(list) {
 
 function Gallery({ product, onChange }) {
   const { message } = App.useApp()
+  const rule = useImageRule('product')
   const [busy, setBusy] = useState(false)
 
   const add = async file => {
+    const problem = await checkImage(file, rule)
+    if (problem) {
+      message.error({ content: `${file.name}: ${problem}`, duration: 6 })
+      return Upload.LIST_IGNORE
+    }
     setBusy(true)
     try {
       onChange(await upload(`/admin/products/${product.id}/images/`, file))
     } catch (err) {
-      message.error(errorText(err))
+      message.error({ content: `${file.name}: ${errorText(err)}`, duration: 6 })
     } finally {
       setBusy(false)
     }
@@ -43,6 +51,7 @@ function Gallery({ product, onChange }) {
   }
 
   return (
+    <>
     <div className="gallery">
       {product.images.map(img => (
         <div key={img.id} className="gallery-item">
@@ -52,16 +61,23 @@ function Gallery({ product, onChange }) {
           </Popconfirm>
         </div>
       ))}
-      <Upload accept="image/*" multiple showUploadList={false} beforeUpload={add} disabled={busy}>
+      <Upload accept={acceptFor(rule)} multiple showUploadList={false} beforeUpload={add} disabled={busy}>
         <button type="button" className="gallery-item" style={{ cursor: 'pointer', display: 'grid', placeItems: 'center', border: '1px dashed #bbb' }}>
           {busy ? <Spin size="small" /> : <span><PlusOutlined /><div style={{ fontSize: 12 }}>Qo'shish</div></span>}
         </button>
       </Upload>
     </div>
+    {rule && (
+      <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: '6px 0 0' }}>
+        Asosiy rasm bilan bir xil talablar. Mahsulotni turli tomondan ko'rsating.
+      </Typography.Paragraph>
+    )}
+    </>
   )
 }
 
 export default function ProductForm() {
+  const perm = usePerm('products')
   const { id } = useParams()
   const isNew = !id
   const navigate = useNavigate()
@@ -112,6 +128,9 @@ export default function ProductForm() {
     }
   }
 
+  // Yangi mahsulot — qo'shish huquqi, mavjudi — tahrirlash huquqi kerak
+  const canEdit = isNew ? perm.add : perm.change
+
   if (!isNew && !product) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />
 
   const discount = price && oldPrice > price ? Math.round((oldPrice - price) * 100 / oldPrice) : 0
@@ -126,28 +145,25 @@ export default function ProductForm() {
         <Typography.Title level={3} style={{ margin: 0 }}>{isNew ? 'Yangi mahsulot' : product.name}</Typography.Title>
         <Space>
           {!isNew && <Button href={`http://localhost:5173/product/${product.slug}`} target="_blank">Saytda ko'rish ↗</Button>}
-          <Button type="primary" loading={saving} onClick={() => form.submit()}>Saqlash</Button>
+          {canEdit && <Button type="primary" loading={saving} onClick={() => form.submit()}>Saqlash</Button>}
         </Space>
       </div>
 
       <Form
-        form={form} layout="vertical" onFinish={save} scrollToFirstError
+        form={form} layout="vertical" onFinish={save} scrollToFirstError disabled={!canEdit}
         initialValues={{ is_active: true, is_hit: false, is_new: true, stock: 0, specs: [] }}
       >
         <Row gutter={16}>
           <Col xs={24} lg={16}>
             <Card title="Asosiy ma'lumotlar" style={{ marginBottom: 16 }}>
-              <Form.Item name="name" label="Nomi" rules={[{ required: true, message: 'Nomini kiriting' }]}>
-                <Input placeholder="Masalan: Samsung Galaxy A56 8/256GB" />
-              </Form.Item>
               <Row gutter={16}>
                 <Col xs={24} md={12}>
-                  <Form.Item name="slug" label="URL (slug)" extra="Bo'sh qoldirsangiz nomdan avtomatik yasaladi">
-                    <Input placeholder="samsung-galaxy-a56" />
+                  <Form.Item name="name" label="Nomi" rules={[{ required: true, message: 'Nomini kiriting' }]}>
+                    <Input placeholder="Masalan: Samsung Galaxy A56 8/256GB" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="sku" label="Artikul"><Input /></Form.Item>
+                  <Form.Item name="sku" label="Mahsulot kodi"><Input placeholder="Masalan: SM-A566B" /></Form.Item>
                 </Col>
               </Row>
               <Row gutter={16}>
@@ -169,22 +185,47 @@ export default function ProductForm() {
               </Form.Item>
             </Card>
 
+            <Card
+              title="Ruscha tarjima"
+              extra={<Typography.Text type="secondary" style={{ fontSize: 12 }}>Ixtiyoriy</Typography.Text>}
+              style={{ marginBottom: 16 }}
+            >
+              <Form.Item name="name_ru" label="Nomi (ruscha)"
+                         extra="Bo'sh bo'lsa saytning ruscha versiyasida o'zbekcha nomi ko'rinadi">
+                <Input placeholder="Например: Холодильник Samsung RB38" />
+              </Form.Item>
+              <Form.Item name="description_ru" label="Tavsif (ruscha)" style={{ marginBottom: 0 }}>
+                <Input.TextArea rows={4} />
+              </Form.Item>
+            </Card>
+
             <Card title="Xususiyatlar" style={{ marginBottom: 16 }}>
               <Form.List name="specs">
                 {(fields, { add, remove, move }) => (
                   <>
+                    {fields.length > 0 && (
+                      <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+                        Yuqori qator — o'zbekcha, pastki — ruscha (ixtiyoriy).
+                      </Typography.Text>
+                    )}
                     {fields.map(({ key, name }, i) => (
-                      <Row key={key} gutter={8} align="middle" wrap={false} style={{ marginBottom: 8 }}>
+                      <Row key={key} gutter={8} align="middle" wrap={false} style={{ marginBottom: 12 }}>
                         <Col flex="none"><HolderOutlined style={{ color: '#bbb' }} /></Col>
                         <Col flex="1">
-                          <Form.Item name={[name, 'name']} noStyle rules={[{ required: true, message: 'Nomi' }]}>
-                            <Input placeholder="Masalan: Ekran" />
-                          </Form.Item>
-                        </Col>
-                        <Col flex="1">
-                          <Form.Item name={[name, 'value']} noStyle rules={[{ required: true, message: 'Qiymati' }]}>
-                            <Input placeholder="6.7&quot; AMOLED" />
-                          </Form.Item>
+                          <div className="spec-grid">
+                            <Form.Item name={[name, 'name']} noStyle rules={[{ required: true, message: 'Nomi' }]}>
+                              <Input prefix={<span className="lang-tag">UZ</span>} placeholder="Masalan: Ekran" />
+                            </Form.Item>
+                            <Form.Item name={[name, 'value']} noStyle rules={[{ required: true, message: 'Qiymati' }]}>
+                              <Input prefix={<span className="lang-tag">UZ</span>} placeholder="6.7&quot; AMOLED" />
+                            </Form.Item>
+                            <Form.Item name={[name, 'name_ru']} noStyle>
+                              <Input prefix={<span className="lang-tag ru">RU</span>} placeholder="Экран" />
+                            </Form.Item>
+                            <Form.Item name={[name, 'value_ru']} noStyle>
+                              <Input prefix={<span className="lang-tag ru">RU</span>} placeholder="Значение" />
+                            </Form.Item>
+                          </div>
                         </Col>
                         <Col flex="none">
                           <Space size={4}>
@@ -195,7 +236,7 @@ export default function ProductForm() {
                         </Col>
                       </Row>
                     ))}
-                    <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add({ name: '', value: '' })}>
+                    <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add({ name: '', value: '', name_ru: '', value_ru: '' })}>
                       Xususiyat qo'shish
                     </Button>
                   </>
@@ -211,7 +252,7 @@ export default function ProductForm() {
                   <div>
                     <Typography.Text strong>Asosiy rasm</Typography.Text>
                     <div style={{ marginTop: 8 }}>
-                      <ImageUpload path={`/admin/products/${id}/upload/`} value={product.image}
+                      <ImageUpload rule="product" path={`/admin/products/${id}/upload/`} value={product.image}
                                    onChange={p => setProduct({ ...product, image: p.image })} />
                     </div>
                   </div>
@@ -259,7 +300,7 @@ export default function ProductForm() {
 
         {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 16, whiteSpace: 'pre-line' }} />}
         <Space>
-          <Button type="primary" htmlType="submit" loading={saving} size="large">Saqlash</Button>
+          {canEdit && <Button type="primary" htmlType="submit" loading={saving} size="large">Saqlash</Button>}
           <Button size="large" onClick={() => navigate('/products')}>Orqaga</Button>
         </Space>
       </Form>

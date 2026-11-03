@@ -5,6 +5,7 @@ import {
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { api, applyFormErrors, errorText } from '../api'
 import ImageUpload from '../components/ImageUpload'
+import { usePerm } from '../auth'
 
 const GRADIENTS = [
   'linear-gradient(120deg, #1f5eff, #6b3bff)',
@@ -13,6 +14,7 @@ const GRADIENTS = [
 ]
 
 export default function Banners() {
+  const perm = usePerm('banners')
   const { message } = App.useApp()
   const [list, setList] = useState(null)
   const [editing, setEditing] = useState(null)
@@ -25,7 +27,7 @@ export default function Banners() {
   const open = b => {
     setEditing(b || {})
     form.resetFields()
-    form.setFieldsValue(b || { is_active: true, order: list?.length || 0 })
+    form.setFieldsValue(b || { is_active: true })
   }
 
   const save = async values => {
@@ -59,7 +61,7 @@ export default function Banners() {
     <>
       <div className="page-head">
         <Typography.Title level={3} style={{ margin: 0 }}>Bannerlar</Typography.Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>Banner qo'shish</Button>
+        {perm.add && <Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>Banner qo'shish</Button>}
       </div>
       <Typography.Paragraph type="secondary">
         Bannerlar sayt bosh sahifasidagi slayderda tartib raqami bo'yicha ko'rsatiladi. Rasm yuklanmasa rangli fon ishlatiladi.
@@ -80,12 +82,12 @@ export default function Banners() {
                 </div>
               }
               actions={[
-                <Switch key="s" size="small" checked={b.is_active} onChange={v => patch(b, { is_active: v })} />,
-                <EditOutlined key="e" onClick={() => open(b)} />,
-                <Popconfirm key="d" title="Banner o'chirilsinmi?" okText="Ha" cancelText="Yo'q" onConfirm={() => remove(b)}>
+                perm.change && <Switch key="s" size="small" checked={b.is_active} onChange={v => patch(b, { is_active: v })} />,
+                perm.change && <EditOutlined key="e" onClick={() => open(b)} />,
+                perm.delete && <Popconfirm key="d" title="Banner o'chirilsinmi?" okText="Ha" cancelText="Yo'q" onConfirm={() => remove(b)}>
                   <DeleteOutlined style={{ color: '#e5383b' }} />
                 </Popconfirm>,
-              ]}
+              ].filter(Boolean)}
             >
               <Space>
                 <Tag>Tartib: {b.order}</Tag>
@@ -101,19 +103,25 @@ export default function Banners() {
         onCancel={() => setEditing(null)} onOk={() => form.submit()} okText="Saqlash" cancelText="Yopish"
         confirmLoading={saving} destroyOnHidden
       >
-        <Form form={form} layout="vertical" onFinish={save}>
+        <Form form={form} layout="vertical" onFinish={save} disabled={!(editing?.id ? perm.change : perm.add)}>
           <Form.Item name="title" label="Sarlavha" rules={[{ required: true, message: 'Sarlavhani kiriting' }]}><Input /></Form.Item>
           <Form.Item name="subtitle" label="Qo'shimcha matn"><Input /></Form.Item>
+          <Form.Item name="title_ru" label="Sarlavha (ruscha)"><Input /></Form.Item>
+          <Form.Item name="subtitle_ru" label="Qo'shimcha matn (ruscha)" extra="Bo'sh bo'lsa o'zbekcha matn ko'rinadi">
+            <Input />
+          </Form.Item>
           <Form.Item name="link" label="Havola" extra="Masalan: /catalog?discount=true yoki /catalog/smartfonlar">
             <Input />
           </Form.Item>
           <Space size="large">
-            <Form.Item name="order" label="Tartib"><InputNumber min={0} /></Form.Item>
+            <Form.Item name="order" label="Tartib" tooltip="Shu o'ringa qo'yiladi, qolganlari suriladi. Bo'sh bo'lsa oxiriga.">
+              <InputNumber min={1} precision={0} placeholder="Oxiriga" />
+            </Form.Item>
             <Form.Item name="is_active" label="Faol" valuePropName="checked"><Switch /></Form.Item>
           </Space>
-          <Form.Item label="Rasm" extra={editing?.id ? 'Tavsiya: 1280×400 px' : 'Rasmni banner saqlangandan keyin yuklaysiz'}>
+          <Form.Item label="Rasm" extra={!editing?.id && 'Rasmni banner saqlangandan keyin yuklaysiz'}>
             {editing?.id && (
-              <ImageUpload path={`/admin/banners/${editing.id}/upload/`} value={editing.image}
+              <ImageUpload rule="banner" path={`/admin/banners/${editing.id}/upload/`} value={editing.image}
                            onChange={b => { setEditing(b); load() }} />
             )}
           </Form.Item>

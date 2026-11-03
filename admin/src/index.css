@@ -15,3 +15,48 @@ body { margin: 0; background: #f4f5f8; }
 .gallery-item { position: relative; width: 96px; height: 96px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; }
 .gallery-item img { width: 100%; height: 100%; object-fit: contain; }
 .gallery-item button { position: absolute; top: 4px; right: 4px; }
+.spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }
+.lang-tag { font-size: 10px; font-weight: 700; color: #1f5eff; background: #eef3ff; border-radius: 4px; padding: 1px 4px; margin-right: 2px; }
+.lang-tag.ru { color: #c2410c; background: #fff3e8; }
+
+/* Sozlamalar: to'lov usuli kartochkasi */
+.pay-card { transition: border-color .15s, box-shadow .15s; }
+.pay-card.on { border-color: #b7cbff; box-shadow: 0 0 0 1px #b7cbff inset; }
+.pay-card-head { display: flex; align-items: center; gap: 12px; }
+.pay-card-title { flex: 1; min-width: 0; display: grid; }
+.pay-card-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+.guide-list { padding-left: 18px; margin: 0 0 12px; }
+.guide-list li { margin-bottom: 6px; }
+.guide-list.compact { margin: 4px 0 0; }
+.guide-list.compact li { margin-bottom: 2px; }
+.where-box { background: #fafbff; border: 1px solid #e3e9ff; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+.where-box ol { margin: 6px 0 0; padding-left: 18px; }
+.where-box li { margin-bottom: 4px; }
+.contact-box { background: #f6fbf7; border: 1px solid #d5efdc; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+.contact-box.compact { background: none; border: 0; padding: 0; margin: 0; }
+.contact-box ul { list-style: none; margin: 6px 0 0; padding: 0; }
+.contact-box li { margin-bottom: 4px; }
+.contact-label { color: #6b7280; }
+.method-logo { background: #fff; border: 1px solid #eee; }
+.method-logo img { object-fit: contain; }
+
+/* Xodimlar: ruxsatlar jadvali (galichkalar) */
+.perm-table { border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; }
+.perm-row { display: grid; grid-template-columns: minmax(150px, 1.6fr) 90px repeat(4, 1fr); align-items: center; gap: 8px; padding: 9px 12px; }
+.perm-row + .perm-row { border-top: 1px solid #f0f0f0; }
+.perm-row:nth-child(even) { background: #fafbfc; }
+.perm-head { background: #f5f7fb !important; font-weight: 600; font-size: 13px; }
+.perm-col { text-align: center; }
+.perm-title { font-size: 14px; }
+.perm-na { color: #c3c7d0; }
+.perm-mobile-label { display: none; }
+@media (max-width: 640px) {
+  .perm-head { display: none; }
+  .perm-row { grid-template-columns: 1fr 1fr; }
+  .perm-title { grid-column: 1 / -1; font-weight: 600; }
+  .perm-col { text-align: left; }
+  .perm-mobile-label { display: inline; }
+  .perm-na { display: none; }
+}
+
+.row-muted td { opacity: .5; }

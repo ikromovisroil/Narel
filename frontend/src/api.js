@@ -1,4 +1,6 @@
 // Backend bilan ishlash. Tokenlar localStorage'da saqlanadi.
+import { getLang, t } from './i18n'
+
 export const SHOP_NAME = 'TechShop'
 
 const tokens = {
@@ -28,7 +30,7 @@ async function refreshAccess() {
 }
 
 export async function api(path, { method = 'GET', body, auth = true } = {}, retried = false) {
-  const headers = { 'Content-Type': 'application/json' }
+  const headers = { 'Content-Type': 'application/json', 'Accept-Language': getLang() }
   if (auth && tokens.access) headers.Authorization = `Bearer ${tokens.access}`
   const r = await fetch(`/api${path}`, {
     method, headers, body: body ? JSON.stringify(body) : undefined,
@@ -43,11 +45,14 @@ export async function api(path, { method = 'GET', body, auth = true } = {}, retr
 
 export function errorText(err) {
   const d = err?.data
-  if (!d) return 'Server bilan bog\'lanib bo\'lmadi'
+  if (!d) return t("Server bilan bog'lanib bo'lmadi")
   if (typeof d === 'string') return d
   if (d.detail) return d.detail
   return Object.values(d).flat().map(v => (typeof v === 'object' ? JSON.stringify(v) : v)).join(' ')
 }
 
+// Raqam guruhlari orasida bo'linmas bo'sh joy: "23 700 000" ikki qatorga bo'linmaydi,
+// kerak bo'lsa faqat "so'm" keyingi qatorga o'tadi
+const NBSP = '\u00A0'
 export const formatPrice = n =>
-  `${String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`
+  `${String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, NBSP)} ${t("so'm")}`

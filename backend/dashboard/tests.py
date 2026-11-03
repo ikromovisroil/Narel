@@ -14,10 +14,10 @@ from orders.models import Order, OrderItem
 MEDIA = tempfile.mkdtemp()
 
 
-def png(name="a.png"):
+def png(name="a.png", size=(800, 800), fmt="PNG"):
     buf = io.BytesIO()
-    Image.new("RGB", (10, 10), "red").save(buf, "PNG")
-    return SimpleUploadedFile(name, buf.getvalue(), content_type="image/png")
+    Image.new("RGB", size, "red").save(buf, fmt)
+    return SimpleUploadedFile(name, buf.getvalue(), content_type=f"image/{fmt.lower()}")
 
 
 @override_settings(MEDIA_ROOT=MEDIA)
@@ -28,7 +28,7 @@ class AdminApiTests(APITestCase):
         shutil.rmtree(MEDIA, ignore_errors=True)
 
     def setUp(self):
-        self.staff = User.objects.create_user("boss", password="x", is_staff=True)
+        self.staff = User.objects.create_user("boss", password="x", is_staff=True, is_superuser=True)
         self.user = User.objects.create_user("client", password="x")
         self.cat = Category.objects.create(name="Telefonlar", slug="telefonlar")
         self.client.force_authenticate(self.staff)
@@ -40,7 +40,7 @@ class AdminApiTests(APITestCase):
 
     def test_product_crud_with_specs_and_auto_slug(self):
         r = self.client.post("/api/admin/products/", {
-            "name": "Galaxy A56 qora", "category": self.cat.id, "price": 5000000, "stock": 3,
+            "name": "Galaxy A56 qora", "slug": "qolda-yozilgan", "category": self.cat.id, "price": 5000000, "stock": 3,
             "specs": [{"name": "Xotira", "value": "256 GB"}, {"name": "Rang", "value": "Qora"}],
         }, format="json")
         self.assertEqual(r.status_code, 201, r.data)
@@ -55,10 +55,11 @@ class AdminApiTests(APITestCase):
         self.assertEqual(r2.data["slug"], "galaxy-a56-qora-2")
 
         r = self.client.patch(f"/api/admin/products/{pid}/", {
-            "price": 4500000, "old_price": 5000000, "specs": [{"name": "Xotira", "value": "512 GB"}],
+            "name": "Galaxy A56 qora (yangi)", "slug": "boshqa", "price": 4500000, "old_price": 5000000,
+            "specs": [{"name": "Xotira", "value": "512 GB", "name_ru": "Память"}],
         }, format="json")
         self.assertEqual(r.status_code, 200, r.data)
-        self.assertEqual(r.data["specs"], [{"name": "Xotira", "value": "512 GB"}])
+        self.assertEqual(r.data["specs"], [{"name": "Xotira", "value": "512 GB", "name_ru": "Память", "value_ru": ""}])
         self.assertEqual(r.data["slug"], "galaxy-a56-qora")
 
         r = self.client.patch(f"/api/admin/products/{pid}/", {"old_price": 100}, format="json")
@@ -76,6 +77,93 @@ class AdminApiTests(APITestCase):
         bad = SimpleUploadedFile("x.png", b"not an image", content_type="image/png")
         r = self.client.post(f"/api/admin/products/{p.id}/upload/", {"file": bad}, format="multipart")
         self.assertEqual(r.status_code, 400)
+
+    def test_image_rules(self):
+        p = Product.objects.create(name="X", slug="x", category=self.cat, price=10)
+        url = f"/api/admin/products/{p.id}/upload/"
+
+        r = self.client.post(url, {"file": png(size=(300, 300))}, format="multipart")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("kichik", r.data["file"][0])
+
+        r = self.client.post(url, {"file": png(size=(1200, 600))}, format="multipart")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("nisbati 1:1", r.data["file"][0])
+
+        r = self.client.post(url, {"file": png("a.gif", fmt="GIF")}, format="multipart")
+        self.assertEqual(r.status_code, 400)
+
+        # 10% gacha farq mumkin
+        r = self.client.post(url, {"file": png("a.jpg", size=(1000, 950), fmt="JPEG")}, format="multipart")
+        self.assertEqual(r.status_code, 200, r.data)
+
+        # Banner: 16:5, kamida 1200x375
+        b = self.client.post("/api/admin/banners/", {"title": "B"}, format="json").data
+        r = self.client.post(f"/api/admin/banners/{b['id']}/upload/", {"file": png(size=(1000, 1000))}, format="multipart")
+        self.assertEqual(r.status_code, 400)
+        r = self.client.post(f"/api/admin/banners/{b['id']}/upload/", {"file": png(size=(1280, 400))}, format="multipart")
+        self.assertEqual(r.status_code, 200, r.data)
+
+        # Brend logosi 5:2
+        br = self.client.post("/api/admin/brands/", {"name": "Sony"}, format="json").data
+        r = self.client.post(f"/api/admin/brands/{br['id']}/upload/", {"file": png(size=(400, 160))}, format="multipart")
+        self.assertEqual(r.status_code, 200, r.data)
+
+        rules = self.client.get("/api/admin/image-rules/").data
+        self.assertEqual(rules["product"]["recommended"], [1000, 1000])
+
+    def test_image_too_heavy(self):
+        p = Product.objects.create(name="X", slug="x", category=self.cat, price=10)
+        heavy = SimpleUploadedFile("big.png", b"0" * (5 * 1024 * 1024 + 1), content_type="image/png")
+        r = self.client.post(f"/api/admin/products/{p.id}/upload/", {"file": heavy}, format="multipart")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("5 MB", r.data["file"][0])
+
+    def _orders(self, model, **flt):
+        return list(model.objects.filter(**flt).order_by("order").values_list("name" if model is Category else "title", "order"))
+
+    def test_order_insert_shifts_others(self):
+        from catalog.models import Banner
+        for t in ["A", "B", "C"]:
+            self.client.post("/api/admin/banners/", {"title": t}, format="json")  # oxiriga qo'shiladi
+        self.assertEqual(self._orders(Banner), [("A", 1), ("B", 2), ("C", 3)])
+
+        # C ni 1-o'ringa: qolganlari suriladi
+        c = Banner.objects.get(title="C")
+        r = self.client.patch(f"/api/admin/banners/{c.id}/", {"order": 1}, format="json")
+        self.assertEqual(r.data["order"], 1)
+        self.assertEqual(self._orders(Banner), [("C", 1), ("A", 2), ("B", 3)])
+
+        # Yangi banner 2-o'ringa
+        self.client.post("/api/admin/banners/", {"title": "D", "order": 2}, format="json")
+        self.assertEqual(self._orders(Banner), [("C", 1), ("D", 2), ("A", 3), ("B", 4)])
+
+        # Juda katta raqam — oxiriga
+        self.client.patch(f"/api/admin/banners/{c.id}/", {"order": 99}, format="json")
+        self.assertEqual(self._orders(Banner), [("D", 1), ("A", 2), ("B", 3), ("C", 4)])
+
+        # Faqat boshqa maydon o'zgarsa tartib joyida qoladi
+        self.client.patch(f"/api/admin/banners/{c.id}/", {"is_active": False}, format="json")
+        self.assertEqual(self._orders(Banner)[-1], ("C", 4))
+
+        # O'chirilganda bo'shliq qolmaydi
+        self.client.delete(f"/api/admin/banners/{Banner.objects.get(title='A').id}/")
+        self.assertEqual(self._orders(Banner), [("D", 1), ("B", 2), ("C", 3)])
+
+        self.assertEqual(self.client.patch(f"/api/admin/banners/{c.id}/", {"order": 0}, format="json").status_code, 400)
+
+    def test_category_order_per_parent(self):
+        ids = {}
+        for name in ["X", "Y"]:
+            ids[name] = self.client.post("/api/admin/categories/", {"name": name, "parent": self.cat.id}, format="json").data["id"]
+        other = self.client.post("/api/admin/categories/", {"name": "Boshqa"}, format="json").data
+        self.assertEqual(self._orders(Category, parent=self.cat), [("X", 1), ("Y", 2)])
+        self.assertEqual(other["order"], 2)  # asosiy darajada "Telefonlar"dan keyin
+
+        # Y ni boshqa ota kategoriyaning 1-o'rniga ko'chirish: eski guruh zichlanadi
+        self.client.patch(f"/api/admin/categories/{ids['Y']}/", {"parent": other["id"], "order": 1}, format="json")
+        self.assertEqual(self._orders(Category, parent=self.cat), [("X", 1)])
+        self.assertEqual(self._orders(Category, parent_id=other["id"]), [("Y", 1)])
 
     def test_delete_protected_category(self):
         Product.objects.create(name="X", slug="x", category=self.cat, price=10)

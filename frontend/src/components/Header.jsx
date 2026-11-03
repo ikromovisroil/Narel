@@ -1,7 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { api, SHOP_NAME } from '../api'
+import { LANGS, t } from '../i18n'
 import { useStore } from '../store'
+import { BoxIcon, CartIcon, HeartIcon, LogoutIcon, UserIcon } from './Icons'
+
+function LangSwitch() {
+  const { lang, changeLang } = useStore()
+  return (
+    <div className="lang-switch">
+      {LANGS.map(l => (
+        <button key={l.code} className={l.code === lang ? 'on' : ''} onClick={() => changeLang(l.code)}>
+          {l.label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export default function Header() {
   const { user, logout, cartCount, favorites } = useStore()
@@ -26,9 +41,10 @@ export default function Header() {
     <header className="header">
       <div className="topbar">
         <div className="container topbar-inner">
-          <span>📍 Toshkent</span>
-          <span>☎ +998 71 000 00 00</span>
-          <span className="muted">Har kuni 9:00 – 21:00</span>
+          <span className="info">📍 {t('Toshkent')}</span>
+          <span className="info">☎ +998 71 000 00 00</span>
+          <span className="info muted">{t('Har kuni 9:00 – 21:00')}</span>
+          <LangSwitch />
         </div>
       </div>
 
@@ -36,28 +52,28 @@ export default function Header() {
         <Link to="/" className="logo">{SHOP_NAME}</Link>
 
         <button className="btn btn-catalog" onClick={() => setMenuOpen(o => !o)}>
-          {menuOpen ? '✕' : '☰'} Katalog
+          {menuOpen ? '✕' : '☰'} <span className="label">{t('Katalog')}</span>
         </button>
 
         <form className="search" onSubmit={search}>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Mahsulot qidirish..." />
-          <button className="btn">Qidirish</button>
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder={t('Mahsulot qidirish...')} />
+          <button className="btn">{t('Qidirish')}</button>
         </form>
 
         <nav className="header-icons">
           {user ? (
             <>
-              <NavLink to="/orders" className="icon-link"><span>📦</span>Buyurtmalar</NavLink>
-              <button className="icon-link" onClick={logout}><span>👤</span>Chiqish</button>
+              <NavLink to="/orders" className="icon-link"><span className="ico"><BoxIcon /></span>{t('Buyurtmalar')}</NavLink>
+              <button className="icon-link" onClick={logout}><span className="ico"><LogoutIcon /></span>{t('Chiqish')}</button>
             </>
           ) : (
-            <NavLink to="/login" className="icon-link"><span>👤</span>Kirish</NavLink>
+            <NavLink to="/login" className="icon-link"><span className="ico"><UserIcon /></span>{t('Kirish')}</NavLink>
           )}
           <NavLink to="/favorites" className="icon-link">
-            <span>♡{favorites.length > 0 && <b className="badge">{favorites.length}</b>}</span>Saralangan
+            <span className="ico"><HeartIcon />{favorites.length > 0 && <b className="badge">{favorites.length}</b>}</span>{t('Sevimlilar')}
           </NavLink>
           <NavLink to="/cart" className="icon-link">
-            <span>🛒{cartCount > 0 && <b className="badge">{cartCount}</b>}</span>Savat
+            <span className="ico"><CartIcon />{cartCount > 0 && <b className="badge">{cartCount}</b>}</span>{t('Savat')}
           </NavLink>
         </nav>
       </div>

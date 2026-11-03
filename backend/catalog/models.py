@@ -5,6 +5,7 @@ from django.db import models
 
 class Category(models.Model):
     name = models.CharField("Nomi", max_length=120)
+    name_ru = models.CharField("Nomi (ruscha)", max_length=120, blank=True)
     slug = models.SlugField(unique=True)
     parent = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.CASCADE, related_name="children"
@@ -44,9 +45,11 @@ class Product(models.Model):
         related_name="products", verbose_name="Brend",
     )
     name = models.CharField("Nomi", max_length=200)
+    name_ru = models.CharField("Nomi (ruscha)", max_length=200, blank=True)
     slug = models.SlugField(unique=True, max_length=220)
-    sku = models.CharField("Artikul", max_length=50, blank=True)
+    sku = models.CharField("Mahsulot kodi", max_length=50, blank=True)
     description = models.TextField("Tavsif", blank=True)
+    description_ru = models.TextField("Tavsif (ruscha)", blank=True)
     price = models.DecimalField("Narxi", max_digits=14, decimal_places=0)
     old_price = models.DecimalField(
         "Eski narxi", max_digits=14, decimal_places=0, null=True, blank=True
@@ -96,6 +99,8 @@ class ProductSpec(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="specs")
     name = models.CharField("Xususiyat", max_length=120)
     value = models.CharField("Qiymati", max_length=255)
+    name_ru = models.CharField("Xususiyat (ruscha)", max_length=120, blank=True)
+    value_ru = models.CharField("Qiymati (ruscha)", max_length=255, blank=True)
     order = models.PositiveIntegerField("Tartib", default=0)
 
     class Meta:
@@ -106,7 +111,9 @@ class ProductSpec(models.Model):
 
 class Banner(models.Model):
     title = models.CharField("Sarlavha", max_length=200)
+    title_ru = models.CharField("Sarlavha (ruscha)", max_length=200, blank=True)
     subtitle = models.CharField("Qo'shimcha matn", max_length=255, blank=True)
+    subtitle_ru = models.CharField("Qo'shimcha matn (ruscha)", max_length=255, blank=True)
     image = models.ImageField("Rasm", upload_to="banners/", blank=True)
     link = models.CharField("Havola", max_length=255, blank=True)
     order = models.PositiveIntegerField("Tartib", default=0)

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, errorText } from '../api'
+import { t } from '../i18n'
 import { useStore } from '../store'
 
 function useNext() {
@@ -23,20 +24,20 @@ export function Login() {
       await login(form.username, form.password)
       navigate(next)
     } catch (err) {
-      setError(err.status === 401 ? 'Login yoki parol noto\'g\'ri' : errorText(err))
+      setError(err.status === 401 ? t("Login yoki parol noto'g'ri") : errorText(err))
     }
   }
 
   return (
     <form className="auth" onSubmit={submit}>
-      <h1>Kirish</h1>
-      <label>Login<input required autoComplete="username" value={form.username}
+      <h1>{t('Kirish')}</h1>
+      <label>{t('Login')}<input required autoComplete="username" value={form.username}
                          onChange={e => setForm({ ...form, username: e.target.value })} /></label>
-      <label>Parol<input required type="password" autoComplete="current-password" value={form.password}
+      <label>{t('Parol')}<input required type="password" autoComplete="current-password" value={form.password}
                          onChange={e => setForm({ ...form, password: e.target.value })} /></label>
       {error && <div className="error">{error}</div>}
-      <button className="btn btn-lg">Kirish</button>
-      <p className="muted">Hisobingiz yo'qmi? <Link to={`/register?next=${encodeURIComponent(next)}`}>Ro'yxatdan o'tish</Link></p>
+      <button className="btn btn-lg">{t('Kirish')}</button>
+      <p className="muted">{t("Hisobingiz yo'qmi?")} <Link to={`/register?next=${encodeURIComponent(next)}`}>{t("Ro'yxatdan o'tish")}</Link></p>
     </form>
   )
 }
@@ -63,18 +64,18 @@ export function Register() {
 
   return (
     <form className="auth" onSubmit={submit}>
-      <h1>Ro'yxatdan o'tish</h1>
+      <h1>{t("Ro'yxatdan o'tish")}</h1>
       <div className="form-row">
-        <label>Ism<input value={form.first_name} onChange={set('first_name')} /></label>
-        <label>Familiya<input value={form.last_name} onChange={set('last_name')} /></label>
+        <label>{t('Ism')}<input value={form.first_name} onChange={set('first_name')} /></label>
+        <label>{t('Familiya')}<input value={form.last_name} onChange={set('last_name')} /></label>
       </div>
-      <label>Login<input required autoComplete="username" value={form.username} onChange={set('username')} /></label>
+      <label>{t('Login')}<input required autoComplete="username" value={form.username} onChange={set('username')} /></label>
       <label>Email<input type="email" value={form.email} onChange={set('email')} /></label>
-      <label>Parol<input required type="password" autoComplete="new-password" value={form.password}
+      <label>{t('Parol')}<input required type="password" autoComplete="new-password" value={form.password}
                          onChange={set('password')} /></label>
       {error && <div className="error">{error}</div>}
-      <button className="btn btn-lg">Ro'yxatdan o'tish</button>
-      <p className="muted">Hisobingiz bormi? <Link to={`/login?next=${encodeURIComponent(next)}`}>Kirish</Link></p>
+      <button className="btn btn-lg">{t("Ro'yxatdan o'tish")}</button>
+      <p className="muted">{t('Hisobingiz bormi?')} <Link to={`/login?next=${encodeURIComponent(next)}`}>{t('Kirish')}</Link></p>
     </form>
   )
 }

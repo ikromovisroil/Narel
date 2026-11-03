@@ -14,6 +14,10 @@ export const ORDER_STATUS = {
 export const PAYMENT = {
   cash: 'Naqd pul',
   card: 'Karta',
+  click: 'Click',
+  payme: 'Payme',
+  paynet: 'Paynet',
+  uzum: 'Uzum Bank',
   installment: 'Muddatli to\'lov',
 }
 

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { SHOP_NAME } from '../api'
+import { t } from '../i18n'
 
 export default function Footer() {
   return (
@@ -7,22 +8,22 @@ export default function Footer() {
       <div className="container footer-grid">
         <div>
           <div className="logo">{SHOP_NAME}</div>
-          <p className="muted">Elektronika va maishiy texnika. Rasmiy kafolat, tez yetkazib berish, muddatli to'lov.</p>
+          <p className="muted">{t("Elektronika va maishiy texnika. Rasmiy kafolat, tez yetkazib berish, muddatli to'lov.")}</p>
         </div>
         <div>
-          <h4>Xaridorlarga</h4>
-          <Link to="/catalog">Katalog</Link>
-          <Link to="/catalog?discount=true">Chegirmalar</Link>
-          <Link to="/orders">Buyurtmalarim</Link>
+          <h4>{t('Xaridorlarga')}</h4>
+          <Link to="/catalog">{t('Katalog')}</Link>
+          <Link to="/catalog?discount=true">{t('Chegirmalar')}</Link>
+          <Link to="/orders">{t('Buyurtmalarim')}</Link>
         </div>
         <div>
-          <h4>Bog'lanish</h4>
+          <h4>{t("Bog'lanish")}</h4>
           <span>+998 71 000 00 00</span>
           <span>info@techshop.uz</span>
-          <span className="muted">Toshkent sh.</span>
+          <span className="muted">{t('Toshkent sh.')}</span>
         </div>
       </div>
-      <div className="container copyright muted">© {new Date().getFullYear()} {SHOP_NAME}</div>
+      <div className="container copyright muted">© 2026 {SHOP_NAME}</div>
     </footer>
   )
 }

@@ -9,10 +9,14 @@ import Checkout from './pages/Checkout'
 import { Login, Register } from './pages/Auth'
 import Orders from './pages/Orders'
 import Favorites from './pages/Favorites'
+import { t } from './i18n'
+import { useStore } from './store'
 
 export default function App() {
+  const { lang } = useStore()
+  // Til o'zgarganda sahifalar qayta yuklanadi (ma'lumot yangi tilda keladi)
   return (
-    <div className="app">
+    <div className="app" key={lang}>
       <Header />
       <main className="container main">
         <Routes>
@@ -26,7 +30,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/favorites" element={<Favorites />} />
-          <Route path="*" element={<div className="empty">Sahifa topilmadi</div>} />
+          <Route path="*" element={<div className="empty">{t('Sahifa topilmadi')}</div>} />
         </Routes>
       </main>
       <Footer />

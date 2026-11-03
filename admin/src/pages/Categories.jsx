@@ -6,8 +6,10 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { api, applyFormErrors, errorText } from '../api'
 import ImageUpload from '../components/ImageUpload'
 import { categoryTree } from './ProductForm'
+import { usePerm } from '../auth'
 
 export default function Categories() {
+  const perm = usePerm('categories')
   const { message } = App.useApp()
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(true)
@@ -38,7 +40,7 @@ export default function Categories() {
   const open = (cat, parent = null) => {
     setEditing(cat || {})
     form.resetFields()
-    form.setFieldsValue(cat || { parent, order: 0 })
+    form.setFieldsValue(cat || { parent })
   }
 
   const save = async values => {
@@ -70,11 +72,14 @@ export default function Categories() {
     }
   }
 
+  // Yangi yozuv — qo'shish, mavjudi — tahrirlash huquqi
+  const canSave = editing?.id ? perm.change : perm.add
+
   return (
     <>
       <div className="page-head">
         <Typography.Title level={3} style={{ margin: 0 }}>Kategoriyalar</Typography.Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>Kategoriya qo'shish</Button>
+        {perm.add && <Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>Kategoriya qo'shish</Button>}
       </div>
 
       <Table
@@ -90,19 +95,20 @@ export default function Categories() {
               </Space>
             ),
           },
-          { title: 'Slug', dataIndex: 'slug', render: s => <Typography.Text type="secondary">{s}</Typography.Text> },
           { title: 'Mahsulotlar', dataIndex: 'products_count', align: 'center', render: n => <Tag>{n}</Tag> },
           { title: 'Tartib', dataIndex: 'order', align: 'center', width: 80 },
           {
             title: '', key: 'a', width: 170, align: 'right',
             render: (_, c) => (
               <Space>
-                <Button size="small" icon={<PlusOutlined />} title="Ichki kategoriya" onClick={() => open(null, c.id)} />
+                {perm.add && <Button size="small" icon={<PlusOutlined />} title="Ichki kategoriya" onClick={() => open(null, c.id)} />}
                 <Button size="small" icon={<EditOutlined />} onClick={() => open(c)} />
-                <Popconfirm title={`"${c.name}" o'chirilsinmi?`} description="Ichki kategoriyalari ham o'chadi."
-                            okText="Ha" cancelText="Yo'q" okButtonProps={{ danger: true }} onConfirm={() => remove(c)}>
-                  <Button size="small" danger icon={<DeleteOutlined />} />
-                </Popconfirm>
+                {perm.delete && (
+                  <Popconfirm title={`"${c.name}" o'chirilsinmi?`} description="Ichki kategoriyalari ham o'chadi."
+                              okText="Ha" cancelText="Yo'q" okButtonProps={{ danger: true }} onConfirm={() => remove(c)}>
+                    <Button size="small" danger icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                )}
               </Space>
             ),
           },
@@ -112,20 +118,25 @@ export default function Categories() {
       <Modal
         open={editing !== null} title={editing?.id ? 'Kategoriyani tahrirlash' : 'Yangi kategoriya'}
         onCancel={() => setEditing(null)} onOk={() => form.submit()} okText="Saqlash" cancelText="Bekor"
-        confirmLoading={saving} destroyOnHidden
+        confirmLoading={saving} destroyOnHidden okButtonProps={{ style: canSave ? undefined : { display: 'none' } }}
       >
-        <Form form={form} layout="vertical" onFinish={save}>
+        <Form form={form} layout="vertical" onFinish={save} disabled={!canSave}
+              onValuesChange={ch => { if ('parent' in ch && !('order' in ch)) form.setFieldValue('order', null) }}>
           <Form.Item name="name" label="Nomi" rules={[{ required: true, message: 'Nomini kiriting' }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="slug" label="Slug" extra="Bo'sh qoldirsangiz avtomatik yasaladi"><Input /></Form.Item>
+          <Form.Item name="name_ru" label="Nomi (ruscha)" extra="Bo'sh bo'lsa o'zbekcha nomi ko'rinadi">
+            <Input placeholder="Например: Холодильники" />
+          </Form.Item>
           <Form.Item name="parent" label="Ota kategoriya">
             <TreeSelect allowClear treeData={parentTree} treeDefaultExpandAll placeholder="Yo'q (asosiy kategoriya)" />
           </Form.Item>
-          <Form.Item name="order" label="Tartib raqami"><InputNumber min={0} /></Form.Item>
+          <Form.Item name="order" label="Tartib raqami" extra="Shu o'ringa qo'yiladi, qolganlari pastga suriladi. Bo'sh qoldirsangiz oxiriga qo'shiladi.">
+            <InputNumber min={1} precision={0} placeholder="Oxiriga" />
+          </Form.Item>
           {editing?.id && (
             <Form.Item label="Ikonka">
-              <ImageUpload path={`/admin/categories/${editing.id}/upload/`} value={editing.icon}
+              <ImageUpload rule="category" path={`/admin/categories/${editing.id}/upload/`} value={editing.icon}
                            onChange={c => { setEditing(c); load() }} label="Ikonka yuklash" />
             </Form.Item>
           )}

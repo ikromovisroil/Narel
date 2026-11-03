@@ -3,11 +3,31 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from rest_framework import serializers
 
+from catalog.i18n import get_lang, localized
 from catalog.models import Product
+from payments.models import PaymentMethod
+from staff.models import effective_permissions
 
 from .models import Order, OrderItem
 
 User = get_user_model()
+
+MESSAGES = {
+    "payment": {
+        "uz": "Bu to'lov usuli hozir mavjud emas. Boshqasini tanlang.",
+        "ru": "Этот способ оплаты сейчас недоступен. Выберите другой.",
+    },
+    "empty": {"uz": "Savat bo'sh.", "ru": "Корзина пуста."},
+    "address": {"uz": "Yetkazish manzilini kiriting.", "ru": "Укажите адрес доставки."},
+    "stock": {
+        "uz": "\"{0}\" omborda yetarli emas (bor: {1}).",
+        "ru": "Товара «{0}» недостаточно на складе (в наличии: {1}).",
+    },
+}
+
+
+def message(request, key, *args):
+    return MESSAGES[key][get_lang(request)].format(*args)
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -22,20 +42,29 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    permissions = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["id", "username", "first_name", "last_name", "email", "is_staff"]
-        read_only_fields = ["username", "is_staff"]
+        fields = ["id", "username", "first_name", "last_name", "email", "is_staff", "is_superuser", "permissions"]
+        read_only_fields = ["username", "is_staff", "is_superuser"]
+
+    def get_permissions(self, obj):
+        # Admin panel menyusi va tugmalari shunga qarab ko'rsatiladi
+        return effective_permissions(obj)
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source="product.name", read_only=True)
+    product_name = serializers.SerializerMethodField()
     product_slug = serializers.CharField(source="product.slug", read_only=True)
 
     class Meta:
         model = OrderItem
         fields = ["product", "product_name", "product_slug", "price", "quantity", "subtotal"]
         read_only_fields = ["price", "subtotal"]
+
+    def get_product_name(self, obj):
+        return localized(obj.product, "name", get_lang(self.context.get("request")))
 
 
 class OrderItemInputSerializer(serializers.Serializer):
@@ -58,10 +87,14 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = ["status", "total", "created_at"]
 
     def validate(self, attrs):
+        # Faqat admin Sozlamalarda yoqqan to'lov usuli qabul qilinadi
+        method = attrs.get("payment_method", Order.Payment.CASH)
+        if method not in PaymentMethod.active_codes():
+            raise serializers.ValidationError({"payment_method": message(self.context.get("request"), "payment")})
         if not attrs.get("cart"):
-            raise serializers.ValidationError({"cart": "Savat bo'sh."})
+            raise serializers.ValidationError({"cart": message(self.context.get("request"), "empty")})
         if attrs.get("delivery_method") != Order.Delivery.PICKUP and not attrs.get("address"):
-            raise serializers.ValidationError({"address": "Yetkazish manzilini kiriting."})
+            raise serializers.ValidationError({"address": message(self.context.get("request"), "address")})
         return attrs
 
     @transaction.atomic
@@ -77,9 +110,11 @@ class OrderSerializer(serializers.ModelSerializer):
             product = products[row["product"].pk]
             qty = row["quantity"]
             if product.stock < qty:
-                raise serializers.ValidationError(
-                    {"cart": f"\"{product.name}\" omborda yetarli emas (bor: {product.stock})."}
-                )
+                lang = get_lang(self.context.get("request"))
+                raise serializers.ValidationError({"cart": message(
+                    self.context.get("request"), "stock",
+                    localized(product, "name", lang), product.stock,
+                )})
             product.stock -= qty
             product.save(update_fields=["stock"])
             OrderItem.objects.create(order=order, product=product, price=product.price, quantity=qty)

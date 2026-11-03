@@ -36,5 +36,19 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>
+  // Bo'lim ruxsati: action — "view" (ko'rish), "add" (qo'shish), "change" (tahrirlash), "delete" (o'chirish).
+  // Backend ham har bir so'rovni baribir tekshiradi.
+  const can = (section, action = 'view') => Boolean(user?.permissions?.[section]?.includes(action))
+
+  // O'z ma'lumotlari (ism, ruxsatlar) o'zgarganda qayta yuklash
+  const refreshMe = () => api('/auth/me/').then(setUser).catch(() => {})
+
+  return <AuthContext.Provider value={{ user, loading, login, logout, can, refreshMe }}>{children}</AuthContext.Provider>
+}
+
+// Sahifada tugmalarni ko'rsatish/yashirish uchun
+export const useCanEdit = section => useAuth().can(section, 'change')
+export const usePerm = section => {
+  const { can } = useAuth()
+  return { view: can(section, 'view'), add: can(section, 'add'), change: can(section, 'change'), delete: can(section, 'delete') }
 }

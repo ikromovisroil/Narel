@@ -7,6 +7,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from catalog.views import BannerViewSet, BrandViewSet, CategoryViewSet, ProductViewSet
 from orders.views import MeView, OrderViewSet, RegisterView
+from payments.views import PublicPaymentMethodViewSet
+from comments.views import MyCommentView, ProductCommentsView
 
 router = DefaultRouter()
 router.register("categories", CategoryViewSet, basename="category")
@@ -14,10 +16,13 @@ router.register("brands", BrandViewSet)
 router.register("banners", BannerViewSet)
 router.register("products", ProductViewSet)
 router.register("orders", OrderViewSet, basename="order")
+router.register("payment-methods", PublicPaymentMethodViewSet, basename="payment-method")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/admin/", include("dashboard.urls")),
+    path("api/products/<slug:slug>/comments/", ProductCommentsView.as_view()),
+    path("api/comments/<int:pk>/", MyCommentView.as_view()),
     path("api/", include(router.urls)),
     path("api/auth/register/", RegisterView.as_view()),
     path("api/auth/login/", TokenObtainPairView.as_view()),

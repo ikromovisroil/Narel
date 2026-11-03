@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Avatar, Badge, Button, Dropdown, Grid, Layout, Menu } from 'antd'
 import {
-  AppstoreOutlined, DashboardOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined,
-  PictureOutlined, ShoppingCartOutlined, ShoppingOutlined, TagsOutlined, TeamOutlined, UserOutlined,
+  LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined,
 } from '@ant-design/icons'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api } from './api'
 import { useAuth } from './auth'
+import { MENU } from './menu'
 
 const { Header, Sider, Content } = Layout
 
+
 export default function AdminLayout() {
-  const { user, logout } = useAuth()
+  const { user, logout, can } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const screens = Grid.useBreakpoint()
@@ -21,6 +22,7 @@ export default function AdminLayout() {
 
   // Yangi buyurtmalar sonini har daqiqada yangilab turamiz
   useEffect(() => {
+    if (!can('orders')) return undefined
     const load = () => api('/admin/orders/', { params: { status: 'new', page_size: 1 } })
       .then(r => setNewOrders(r.count)).catch(() => {})
     load()
@@ -30,20 +32,14 @@ export default function AdminLayout() {
       clearInterval(t)
       window.removeEventListener('orders-changed', load)
     }
-  }, [pathname])
+  }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const items = [
-    { key: '/', icon: <DashboardOutlined />, label: 'Bosh sahifa' },
-    {
-      key: '/orders', icon: <ShoppingCartOutlined />,
-      label: <span>Buyurtmalar <Badge count={newOrders} size="small" offset={[6, -2]} /></span>,
-    },
-    { key: '/products', icon: <ShoppingOutlined />, label: 'Mahsulotlar' },
-    { key: '/categories', icon: <AppstoreOutlined />, label: 'Kategoriyalar' },
-    { key: '/brands', icon: <TagsOutlined />, label: 'Brendlar' },
-    { key: '/banners', icon: <PictureOutlined />, label: 'Bannerlar' },
-    { key: '/customers', icon: <TeamOutlined />, label: 'Mijozlar' },
-  ]
+  // Menyuda faqat ruxsati bor bo'limlar ko'rinadi
+  const items = MENU.filter(m => can(m.section)).map(({ section: _section, ...m }) => (
+    m.key === '/orders'
+      ? { ...m, label: <span>Buyurtmalar <Badge count={newOrders} size="small" offset={[6, -2]} /></span> }
+      : m
+  ))
   const selected = items.map(i => i.key).filter(k => k !== '/' && pathname.startsWith(k))[0] || '/'
 
   return (

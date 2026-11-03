@@ -1,12 +1,11 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.deletion import ProtectedError
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
-from rest_framework import mixins, permissions, serializers, status, viewsets
+from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser
@@ -14,9 +13,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from catalog.models import Banner, Brand, Category, Product, ProductImage
+from catalog.ordering import renumber
 from orders.models import Order, OrderItem
+from staff.permissions import AnyStaff, SectionPermission
 
 from . import serializers as s
+from .images import public_rules, validate_image
 
 User = get_user_model()
 LOW_STOCK = 5
@@ -30,7 +32,8 @@ class AdminPagination(PageNumberPagination):
 
 
 class AdminMixin:
-    permission_classes = [permissions.IsAdminUser]
+    # Har bir view o'z bo'limini `section` bilan belgilaydi (staff.models.SECTIONS)
+    permission_classes = [SectionPermission]
     pagination_class = AdminPagination
 
     def destroy(self, request, *args, **kwargs):
@@ -43,20 +46,12 @@ class AdminMixin:
             )
 
 
-def validated_image(request):
-    file = request.FILES.get("file")
-    if not file:
-        raise serializers.ValidationError({"file": "Fayl tanlanmagan."})
-    try:
-        return serializers.ImageField().to_internal_value(file)
-    except DjangoValidationError as exc:
-        raise serializers.ValidationError({"file": exc.messages})
-
-
 class UploadMixin:
-    """POST /<id>/upload/ — rasm yuklash, DELETE — rasmni olib tashlash."""
+    """POST /<id>/upload/ — rasm yuklash, DELETE — rasmni olib tashlash.
+    upload_rule — images.RULES dagi talablar kaliti."""
 
     upload_field = "image"
+    upload_rule = "product"
 
     @action(detail=True, methods=["post", "delete"], parser_classes=[MultiPartParser])
     def upload(self, request, pk=None):
@@ -67,33 +62,49 @@ class UploadMixin:
                 field.delete(save=False)
             setattr(obj, self.upload_field, None)
         else:
-            setattr(obj, self.upload_field, validated_image(request))
+            setattr(obj, self.upload_field, validate_image(request.FILES.get("file"), self.upload_rule))
         obj.save()
         return Response(self.get_serializer(obj).data)
 
 
 class CategoryViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
+    section = "categories"
     serializer_class = s.CategorySerializer
     pagination_class = None
     upload_field = "icon"
+    upload_rule = "category"
+
+    def perform_destroy(self, instance):
+        scope = Category.objects.filter(parent_id=instance.parent_id)
+        instance.delete()
+        renumber(scope)
     queryset = Category.objects.annotate(products_count=Count("products")).order_by("order", "name")
 
 
 class BrandViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
+    section = "brands"
     serializer_class = s.BrandSerializer
     pagination_class = None
     upload_field = "logo"
+    upload_rule = "brand"
     queryset = Brand.objects.annotate(products_count=Count("products"))
     search_fields = ["name"]
 
 
 class BannerViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
+    section = "banners"
     serializer_class = s.BannerSerializer
     pagination_class = None
+    upload_rule = "banner"
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        renumber(Banner.objects.all())
     queryset = Banner.objects.all()
 
 
 class ProductViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
+    section = "products"
     serializer_class = s.ProductSerializer
     search_fields = ["name", "sku", "brand__name"]
     ordering_fields = ["name", "price", "stock", "created_at", "sold"]
@@ -116,12 +127,14 @@ class ProductViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
     def images(self, request, pk=None):
         product = self.get_object()
         ProductImage.objects.create(
-            product=product, image=validated_image(request), order=product.images.count()
+            product=product, image=validate_image(request.FILES.get("file"), "product"), order=product.images.count()
         )
         return Response(self.get_serializer(self.get_object()).data, status=status.HTTP_201_CREATED)
 
 
 class ProductImageViewSet(AdminMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    section = "products"
+    delete_action = "change"  # galereyadan rasm o'chirish — mahsulotni tahrirlash
     queryset = ProductImage.objects.all()
 
     def perform_destroy(self, instance):
@@ -133,6 +146,7 @@ class OrderViewSet(
     AdminMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin, viewsets.GenericViewSet,
 ):
+    section = "orders"
     serializer_class = s.OrderSerializer
     search_fields = ["id", "full_name", "phone", "user__username"]
     ordering_fields = ["created_at", "total"]
@@ -151,6 +165,7 @@ class OrderViewSet(
 
 
 class CustomerViewSet(AdminMixin, viewsets.ReadOnlyModelViewSet):
+    section = "customers"
     serializer_class = s.CustomerSerializer
     search_fields = ["username", "first_name", "last_name", "email"]
     ordering_fields = ["date_joined", "orders_count", "total_spent"]
@@ -165,7 +180,8 @@ class CustomerViewSet(AdminMixin, viewsets.ReadOnlyModelViewSet):
 
 
 class StatsView(APIView):
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [SectionPermission]
+    section = "dashboard"
 
     def get(self, request):
         now = timezone.localtime()
@@ -228,3 +244,10 @@ class StatsView(APIView):
                 .order_by("-created_at")[:6], many=True
             ).data,
         })
+
+
+class ImageRulesView(APIView):
+    permission_classes = [AnyStaff]
+
+    def get(self, request):
+        return Response(public_rules())

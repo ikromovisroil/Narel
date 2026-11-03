@@ -1,6 +1,10 @@
 import django_filters
 from django.db.models import Q
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
+from rest_framework.filters import OrderingFilter, SearchFilter
+
+from .i18n import has_cyrillic, to_latin
 
 from .models import Banner, Brand, Category, Product
 from .serializers import (
@@ -58,6 +62,27 @@ class ProductFilter(django_filters.FilterSet):
         return qs.filter(old_price__isnull=False) if value else qs
 
 
+class MultiScriptSearchFilter(SearchFilter):
+    """Kirillcha so'rov ("музлатгич") lotin matndan ham, ruscha matndan ham qidiradi."""
+
+    _override = None
+
+    def get_search_terms(self, request):
+        return self._override if self._override is not None else super().get_search_terms(request)
+
+    def filter_queryset(self, request, queryset, view):
+        found = super().filter_queryset(request, queryset, view)
+        terms = self.get_search_terms(request)
+        if not any(has_cyrillic(t) for t in terms):
+            return found
+        self._override = [to_latin(t) for t in terms]
+        try:
+            latin = super().filter_queryset(request, queryset, view)
+        finally:
+            self._override = None
+        return queryset.filter(Q(pk__in=found.values("pk")) | Q(pk__in=latin.values("pk")))
+
+
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = (
         Product.objects.filter(is_active=True)
@@ -66,7 +91,8 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     )
     lookup_field = "slug"
     filterset_class = ProductFilter
-    search_fields = ["name", "description", "brand__name", "sku"]
+    filter_backends = [DjangoFilterBackend, MultiScriptSearchFilter, OrderingFilter]
+    search_fields = ["name", "name_ru", "description", "description_ru", "brand__name", "sku"]
     ordering_fields = ["price", "created_at", "name"]
 
     def get_serializer_class(self):

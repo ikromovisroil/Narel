@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import ProductCard from '../components/ProductCard'
+import { t } from '../i18n'
+import { useStore } from '../store'
 
 function BannerSlider({ banners }) {
   const [i, setI] = useState(0)
@@ -17,7 +19,7 @@ function BannerSlider({ banners }) {
       <div className={`slide slide-${i % 3}`}>
         <h2>{b.title}</h2>
         {b.subtitle && <p>{b.subtitle}</p>}
-        <Link className="btn btn-light" to={b.link || '/catalog'}>Batafsil</Link>
+        <Link className="btn btn-light" to={b.link || '/catalog'}>{t('Batafsil')}</Link>
       </div>
       <div className="dots">
         {banners.map((_, k) => <button key={k} className={k === i ? 'on' : ''} onClick={() => setI(k)} />)}
@@ -36,17 +38,18 @@ function Section({ title, query, more }) {
     <section className="section">
       <div className="section-head">
         <h2>{title}</h2>
-        <Link to={more}>Barchasi ›</Link>
+        <Link to={more}>{t('Barchasi ›')}</Link>
       </div>
       <div className="grid grid-scroll">
         {items ? items.slice(0, 10).map(p => <ProductCard key={p.id} p={p} />)
-               : <div className="muted">Yuklanmoqda...</div>}
+               : <div className="muted">{t('Yuklanmoqda...')}</div>}
       </div>
     </section>
   )
 }
 
 export default function Home() {
+  const { installmentMonths } = useStore()
   const [banners, setBanners] = useState([])
   const [categories, setCategories] = useState([])
   const [brands, setBrands] = useState([])
@@ -62,14 +65,16 @@ export default function Home() {
       <BannerSlider banners={banners} />
 
       <div className="perks">
-        <div><b>🚚 Bepul yetkazish</b><span>Toshkent bo'ylab 1 kunda</span></div>
-        <div><b>💳 Muddatli to'lov</b><span>12 oygacha bo'lib to'lash</span></div>
-        <div><b>🛡 Rasmiy kafolat</b><span>Barcha mahsulotlarga</span></div>
-        <div><b>↩ Qaytarish</b><span>10 kun ichida</span></div>
+        <div><b>🚚 {t('Bepul yetkazish')}</b><span>{t("Toshkent bo'ylab 1 kunda")}</span></div>
+        {installmentMonths && (
+          <div><b>💳 {t("Muddatli to'lov")}</b><span>{t("{n} oygacha bo'lib to'lash", { n: installmentMonths })}</span></div>
+        )}
+        <div><b>🛡 {t('Rasmiy kafolat')}</b><span>{t('Barcha mahsulotlarga')}</span></div>
+        <div><b>↩ {t('Qaytarish')}</b><span>{t('10 kun ichida')}</span></div>
       </div>
 
       <section className="section">
-        <div className="section-head"><h2>Ommabop kategoriyalar</h2></div>
+        <div className="section-head"><h2>{t('Ommabop kategoriyalar')}</h2></div>
         <div className="cat-tiles">
           {categories.flatMap(c => c.children).slice(0, 12).map(c => (
             <Link key={c.id} to={`/catalog/${c.slug}`} className="cat-tile">
@@ -80,13 +85,13 @@ export default function Home() {
         </div>
       </section>
 
-      <Section title="🔥 Xit savdo" query="is_hit=true" more="/catalog?is_hit=true" />
-      <Section title="💰 Chegirmalar" query="discount=true" more="/catalog?discount=true" />
-      <Section title="✨ Yangi mahsulotlar" query="is_new=true" more="/catalog?is_new=true" />
+      <Section title={`🔥 ${t('Xit savdo')}`} query="is_hit=true" more="/catalog?is_hit=true" />
+      <Section title={`💰 ${t('Chegirmalar')}`} query="discount=true" more="/catalog?discount=true" />
+      <Section title={`✨ ${t('Yangi mahsulotlar')}`} query="is_new=true" more="/catalog?is_new=true" />
 
       {brands.length > 0 && (
         <section className="section">
-          <div className="section-head"><h2>Brendlar</h2></div>
+          <div className="section-head"><h2>{t('Brendlar')}</h2></div>
           <div className="brands">
             {brands.map(b => (
               <Link key={b.id} to={`/catalog?brand=${b.slug}`} className="brand">

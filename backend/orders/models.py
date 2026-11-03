@@ -28,8 +28,10 @@ class Order(models.Model):
     phone = models.CharField("Telefon", max_length=20)
     address = models.TextField("Manzil", blank=True)
     note = models.TextField("Izoh", blank=True)
+    # Kod payments.PaymentMethod.code ga mos (cash, card, click, payme, ...).
+    # Qaysilari mavjudligi admin paneldagi Sozlamalarda boshqariladi.
     payment_method = models.CharField(
-        "To'lov usuli", max_length=20, choices=Payment.choices, default=Payment.CASH
+        "To'lov usuli", max_length=20, default=Payment.CASH
     )
     delivery_method = models.CharField(
         "Yetkazish usuli", max_length=20, choices=Delivery.choices, default=Delivery.COURIER

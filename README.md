@@ -70,6 +70,30 @@ npm run dev
 
 http://localhost:5174 — `createsuperuser` bilan yaratilgan (yoki `is_staff` belgisi bor) hisob bilan kiriladi.
 
+## Tillar
+
+Sayt ikki tilda: **o'zbek** va **rus**. Til yuqori o'ng burchakda tanlanadi va brauzerda eslab qolinadi.
+
+- Ruscha matnlar admin panelda "ruscha" maydonlariga yoziladi (kategoriya, mahsulot nomi va tavsifi, xususiyatlar, bannerlar). Bo'sh bo'lsa o'zbekcha ko'rsatiladi.
+- Saytning o'z yozuvlari (tugmalar, menyular) ruschasi `frontend/src/locales/ru.js` faylida. Kalit — o'zbekcha matnning o'zi: `t("Savatga")`.
+- API tilni `Accept-Language` sarlavhasidan oladi: `uz` yoki `ru`.
+- Qidiruv lotin, kirill va ruscha yozilganda ham ishlaydi ("muzlatgich", "музлатгич", "холодильник").
+- `seed` buyrug'i demo ma'lumotlarning bo'sh ruscha maydonlarini to'ldiradi.
+
+## Rasm talablari
+
+Admin panel va backend quyidagilarni tekshiradi (nisbatda 10% gacha farqqa ruxsat bor).
+Talablar `backend/dashboard/images.py` faylida, admin panel ularni o'sha yerdan oladi.
+
+| Rasm | Tavsiya | Kamida | Nisbat | Hajm |
+|---|---|---|---|---|
+| Mahsulot (asosiy va galereya) | 1000×1000 px | 600×600 px | 1:1 | 5 MB |
+| Kategoriya ikonkasi | 256×256 px | 96×96 px | 1:1 | 1 MB |
+| Brend logosi | 400×160 px | 200×80 px | 5:2 | 1 MB |
+| Banner | 1280×400 px | 1200×375 px | 16:5 | 5 MB |
+
+Formatlar: JPG, PNG, WEBP. Tomonlar 4000 px dan oshmasligi kerak.
+
 ## API
 
 | Endpoint | Tavsif |

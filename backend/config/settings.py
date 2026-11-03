@@ -29,12 +29,16 @@ INSTALLED_APPS = [
     "catalog",
     "orders",
     "dashboard",
+    "payments",
+    "staff",
+    "comments",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -80,6 +84,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "uz"
+# Django/DRF xabarlari tili (Accept-Language bo'yicha)
+LANGUAGES = [("uz", "O'zbekcha"), ("ru", "Русский")]
 TIME_ZONE = "Asia/Tashkent"
 USE_I18N = True
 USE_TZ = True
@@ -105,11 +111,15 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 12,
+    # Izoh yozish: bir foydalanuvchi daqiqasiga 10 tagacha
+    "DEFAULT_THROTTLE_RATES": {"comments": "10/min"},
 }
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Xodimlar jadvalidagi "Oxirgi kirish" ustuni uchun
+    "UPDATE_LAST_LOGIN": True,
 }
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", "http://localhost:5173")

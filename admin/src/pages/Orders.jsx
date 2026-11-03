@@ -7,10 +7,12 @@ import dayjs from 'dayjs'
 import { useSearchParams } from 'react-router-dom'
 import { api, errorText } from '../api'
 import { DELIVERY, formatPrice, options, ORDER_STATUS, PAYMENT } from '../utils'
+import { useCanEdit } from '../auth'
 
 const FLOW = ['new', 'confirmed', 'shipped', 'delivered']
 
 function OrderDrawer({ id, onClose, onChanged }) {
+  const canEdit = useCanEdit('orders')
   const { message } = App.useApp()
   const [order, setOrder] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -42,7 +44,7 @@ function OrderDrawer({ id, onClose, onChanged }) {
   return (
     <Drawer open={Boolean(id)} onClose={onClose} size={640} title={order ? `Buyurtma #${order.id}` : 'Yuklanmoqda...'}
             loading={!order}
-            extra={order && !cancelled && (
+            extra={order && !cancelled && canEdit && (
               <Popconfirm title="Buyurtmani bekor qilasizmi?" description="Mahsulotlar omborga qaytariladi."
                           okText="Ha, bekor qilish" cancelText="Yo'q" okButtonProps={{ danger: true }}
                           onConfirm={() => setStatus('cancelled')}>
@@ -54,7 +56,7 @@ function OrderDrawer({ id, onClose, onChanged }) {
           {cancelled ? <Tag color="red" style={{ fontSize: 14, padding: 6 }}>Bekor qilingan</Tag> : (
             <>
               <Steps current={step} size="small" items={FLOW.map(s => ({ title: ORDER_STATUS[s].label }))} />
-              {next && (
+              {next && canEdit && (
                 <Button type="primary" block loading={saving} onClick={() => setStatus(next)}>
                   "{ORDER_STATUS[next].label}" holatiga o'tkazish
                 </Button>
