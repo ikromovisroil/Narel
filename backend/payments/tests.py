@@ -17,7 +17,7 @@ class PaymentSettingsTests(APITestCase):
     def order(self, method):
         self.client.force_authenticate(self.client_user)
         return self.client.post("/api/orders/", {
-            "full_name": "A", "phone": "1", "address": "B", "payment_method": method,
+            "full_name": "A", "phone": "+998901234567", "address": "Toshkent, Chilonzor 1", "payment_method": method,
             "cart": [{"product": self.product.id, "quantity": 1}],
         }, format="json")
 

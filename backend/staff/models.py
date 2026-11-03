@@ -15,7 +15,8 @@ SECTIONS = [
     ("brands", "Brendlar", ALL),
     ("banners", "Bannerlar", ALL),
     ("customers", "Mijozlar", VIEW),
-    ("comments", "Izohlar (moderatsiya)", ["view", "change", "delete"]),
+    # add — do'kon nomidan javob yozish, change — yashirish/ko'rsatish
+    ("comments", "Izohlar", ["view", "add", "change", "delete"]),
     ("staff", "Xodimlar", ALL),
     ("settings", "Sozlamalar (to'lov usullari)", ["view", "change"]),
 ]

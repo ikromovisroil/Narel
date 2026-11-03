@@ -7,6 +7,7 @@ import { api, applyFormErrors, errorText } from '../api'
 import ImageUpload from '../components/ImageUpload'
 import PaymentGuide from '../components/PaymentGuide'
 import ProviderContacts from '../components/ProviderContacts'
+import StoreSettingsCard from '../components/StoreSettingsCard'
 import { useCanEdit } from '../auth'
 
 // Logo yuklanmagan bo'lsa — rangli harf
@@ -154,6 +155,8 @@ export default function Settings() {
         <Typography.Title level={3} style={{ margin: 0 }}>Sozlamalar</Typography.Title>
         <Button icon={<BookOutlined />} onClick={() => setGuide(true)}>Qo'llanma</Button>
       </div>
+
+      <StoreSettingsCard />
 
       <Card title="To'lov usullari" extra={<Typography.Text type="secondary">{activeCount} ta yoqilgan</Typography.Text>}>
         <Alert

@@ -7,6 +7,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api } from './api'
 import { useAuth } from './auth'
 import { MENU } from './menu'
+import { LogoMark } from './LogoMark'
 
 const { Header, Sider, Content } = Layout
 
@@ -50,7 +51,8 @@ export default function AdminLayout() {
         style={mobile ? { position: 'fixed', height: '100vh', zIndex: 100 } : { position: 'sticky', top: 0, height: '100vh' }}
       >
         <div className="logo">
-          {collapsed ? <><b>T</b>S</> : <><span><b>T</b>echShop</span><small>admin</small></>}
+          <LogoMark size={30} dark />
+          {!collapsed && <><span>Narel</span><small>admin</small></>}
         </div>
         <Menu
           theme="dark" mode="inline" selectedKeys={[selected]} items={items}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import ProductCard from '../components/ProductCard'
+import { pickupWhere } from '../components/StoreInfo'
 import { t } from '../i18n'
 import { useStore } from '../store'
 
@@ -49,7 +50,8 @@ function Section({ title, query, more }) {
 }
 
 export default function Home() {
-  const { installmentMonths } = useStore()
+  const { installmentMonths, storeInfo } = useStore()
+  const freeDelivery = storeInfo && !Number(storeInfo.delivery_price)
   const [banners, setBanners] = useState([])
   const [categories, setCategories] = useState([])
   const [brands, setBrands] = useState([])
@@ -65,7 +67,11 @@ export default function Home() {
       <BannerSlider banners={banners} />
 
       <div className="perks">
-        <div><b>🚚 {t('Bepul yetkazish')}</b><span>{t("Toshkent bo'ylab 1 kunda")}</span></div>
+        {storeInfo?.delivery_enabled ? (
+          <div><b>🚚 {freeDelivery ? t('Bepul yetkazish') : t('Yetkazib berish')}</b><span>{storeInfo.delivery_note}</span></div>
+        ) : storeInfo?.pickup_enabled && (
+          <div><b>🏬 {t("Do'kondan olib ketish")}</b><span>{pickupWhere(storeInfo)}</span></div>
+        )}
         {installmentMonths && (
           <div><b>💳 {t("Muddatli to'lov")}</b><span>{t("{n} oygacha bo'lib to'lash", { n: installmentMonths })}</span></div>
         )}

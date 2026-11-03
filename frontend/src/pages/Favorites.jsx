@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import ConfirmButton from '../components/ConfirmButton'
 import { HeartIcon, TrashIcon } from '../components/Icons'
 import ProductCard from '../components/ProductCard'
 import { t } from '../i18n'
@@ -27,9 +28,10 @@ export default function Favorites() {
     <div>
       <div className="page-head">
         <h1 className="page-title">{t('Sevimlilar')} <span className="muted">({favorites.length})</span></h1>
-        <button className="clear-btn" onClick={() => window.confirm(t("Sevimlilar ro'yxatini tozalaysizmi?")) && clearFavorites()}>
+        <ConfirmButton className="clear-btn" title={t("Sevimlilar ro'yxatini tozalaysizmi?")}
+                       okLabel={t('Tozalash')} onConfirm={clearFavorites}>
           <TrashIcon size={16} /> {t('Tozalash')}
-        </button>
+        </ConfirmButton>
       </div>
       <div className="grid">{favorites.map(p => <ProductCard key={p.id} p={p} />)}</div>
     </div>

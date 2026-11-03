@@ -3,7 +3,6 @@ body { margin: 0; background: #f4f5f8; }
   height: 64px; display: flex; align-items: center; gap: 8px; padding: 0 24px;
   color: #fff; font-size: 20px; font-weight: 800; white-space: nowrap; overflow: hidden;
 }
-.logo b { color: #ff6a00; }
 .logo small { font-weight: 500; font-size: 12px; opacity: .6; }
 .page-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .page-head h2 { margin: 0; }
@@ -60,3 +59,30 @@ body { margin: 0; background: #f4f5f8; }
 }
 
 .row-muted td { opacity: .5; }
+
+/* Sozlamalar: do'kon va yetkazib berish */
+.setting-box { border: 1px solid #f0f0f0; border-radius: 10px; padding: 14px 16px; height: 100%; }
+.setting-box-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 15px; }
+.setting-box-head .ant-switch { margin-left: auto; }
+
+.login-logo { display: inline-flex; align-items: center; gap: 10px; vertical-align: middle; }
+.logo svg { flex-shrink: 0; }
+
+/* Izohga javob oynasi */
+.reply-thread { display: grid; gap: 8px; margin: 12px 0; max-height: 280px; overflow-y: auto; padding: 4px; }
+.reply-msg { background: #f5f7fb; border-radius: 10px; padding: 10px 12px; }
+.reply-msg.sub { margin-left: 24px; background: #fafafa; }
+.reply-msg.staff { background: #fff4ea; }
+.row-staff td { background: #fffaf5; }
+
+/* Buyurtma: yetkazish sanasi bloki */
+.date-box { display: grid; gap: 8px; padding: 12px 14px; border-radius: 10px; background: #f6f8fc; border: 1px solid #e6ebf5; }
+.date-box.accept { background: #eef4ff; border-color: #b7cbff; }
+.date-box.late { background: #fff5f5; border-color: #ffccc7; }
+
+/* Olib ketish filiallari */
+.branch-list { display: grid; gap: 8px; }
+.branch-item { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; border: 1px solid #f0f0f0; border-radius: 8px; padding: 10px 12px; background: #fafafa; }
+.branch-item.off { opacity: .6; }
+.branch-main { min-width: 0; }
+.branch-meta { color: #666; font-size: 13px; margin-top: 2px; }

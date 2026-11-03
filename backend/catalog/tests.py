@@ -48,3 +48,29 @@ class PublicApiLanguageTests(APITestCase):
         for q in ("muzlatgich", "музлатгич", "холодильник"):
             r = self.client.get("/api/products/", {"search": q}).json()
             self.assertEqual(r["count"], 1, q)
+
+
+class SimilarProductsTests(APITestCase):
+    def test_same_category_first_then_parent(self):
+        parent = Category.objects.create(name="Gadjetlar", slug="g")
+        phones = Category.objects.create(name="Telefonlar", slug="tel", parent=parent)
+        watches = Category.objects.create(name="Soatlar", slug="soat", parent=parent)
+        tv = Category.objects.create(name="TV", slug="tv")
+        sam, apple = Brand.objects.create(name="Samsung", slug="s"), Brand.objects.create(name="Apple", slug="a")
+
+        def make(slug, cat, brand, price, **kw):
+            return Product.objects.create(name=slug, slug=slug, category=cat, brand=brand, price=price,
+                                          stock=kw.pop("stock", 5), **kw)
+
+        current = make("s25", phones, sam, 1000)
+        make("iphone", phones, apple, 1100)
+        make("a56", phones, sam, 500)
+        make("old", phones, sam, 1000, stock=0)          # tugagan — ko'rsatilmaydi
+        make("hidden", phones, sam, 1000, is_active=False)
+        make("watch", watches, sam, 300)
+        make("tv", tv, sam, 1000)                         # boshqa bo'lim — ko'rsatilmaydi
+
+        names = [p["name"] for p in self.client.get("/api/products/s25/similar/").json()]
+        # Avval shu kategoriya (shu brend oldin), keyin ota kategoriya
+        self.assertEqual(names, ["a56", "iphone", "watch"])
+        self.assertNotIn(current.slug, names)

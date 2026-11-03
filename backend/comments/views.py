@@ -1,6 +1,7 @@
-from django.db.models import Avg, Count, Prefetch, Q
+from django.db.models import Avg, Count, Exists, OuterRef, Prefetch, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -18,12 +19,12 @@ class CommentPagination(PageNumberPagination):
 
 
 def visible_threads(product):
-    replies = Comment.objects.filter(is_hidden=False).select_related("user").order_by("created_at")
+    replies = Comment.objects.filter(is_hidden=False).select_related("user").order_by("created_at", "id")
     return (
         Comment.objects.filter(product=product, parent__isnull=True, is_hidden=False)
         .select_related("user")
         .prefetch_related(Prefetch("replies", queryset=replies, to_attr="visible_replies"))
-        .order_by("-created_at")
+        .order_by("-created_at", "-id")  # id — bir vaqtda yozilganlar uchun aniq tartib
     )
 
 
@@ -80,18 +81,19 @@ class MyCommentView(APIView):
 class AdminCommentViewSet(
     AdminMixin, mixins.ListModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet
 ):
-    """Moderatsiya: ro'yxat, yashirish/ko'rsatish, o'chirish."""
+    """Moderatsiya: ro'yxat, yashirish/ko'rsatish, o'chirish va do'kon nomidan javob yozish."""
 
     section = "comments"
     serializer_class = AdminCommentSerializer
     search_fields = ["text", "user__username", "user__first_name", "product__name"]
-    filterset_fields = ["is_hidden", "product", "rating"]
+    filterset_fields = ["is_hidden", "product", "rating", "parent"]
 
     def get_queryset(self):
+        staff_reply = Comment.objects.filter(parent=OuterRef("pk"), user__is_staff=True)
         qs = (
             Comment.objects.select_related("user", "product", "parent")
-            .annotate(replies_count=Count("replies"))
-            .order_by("-created_at")
+            .annotate(replies_count=Count("replies"), staff_replied=Exists(staff_reply))
+            .order_by("-created_at", "-id")
         )
         kind = self.request.query_params.get("kind")
         if kind == "reviews":
@@ -100,4 +102,21 @@ class AdminCommentViewSet(
             qs = qs.filter(parent__isnull=False)
         elif kind == "low":
             qs = qs.filter(Q(rating__lte=2))
+        elif kind == "unanswered":
+            # Mijozlarning asosiy izohlari, do'kon hali javob bermagan
+            qs = qs.filter(parent__isnull=True, user__is_staff=False, staff_replied=False)
         return qs
+
+    @action(detail=True, methods=["post"])
+    def reply(self, request, pk=None):
+        """Do'kon nomidan javob: saytda xodim ismi yonida "Do'kon" belgisi bilan chiqadi."""
+        target = self.get_object()
+        root = target.parent or target  # javobga javob — o'sha suhbatga
+        text = (request.data.get("text") or "").strip()
+        if len(text) < 2:
+            return Response({"text": ["Javob juda qisqa."]}, status=status.HTTP_400_BAD_REQUEST)
+        if len(text) > 1000:
+            return Response({"text": ["Javob 1000 belgidan oshmasin."]}, status=status.HTTP_400_BAD_REQUEST)
+        reply = Comment.objects.create(product=root.product, user=request.user, parent=root, text=text)
+        reply = self.get_queryset().get(pk=reply.pk)
+        return Response(self.get_serializer(reply).data, status=status.HTTP_201_CREATED)

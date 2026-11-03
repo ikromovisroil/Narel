@@ -1,7 +1,7 @@
 // Backend bilan ishlash. Tokenlar localStorage'da saqlanadi.
 import { getLang, t } from './i18n'
 
-export const SHOP_NAME = 'TechShop'
+export const SHOP_NAME = 'Narel'
 
 const tokens = {
   get access() { return localStorage.getItem('access') },

@@ -18,7 +18,7 @@ function CustomerOrders({ customer, onClose }) {
       {customer && (
         <>
           <Typography.Paragraph type="secondary">
-            Login: {customer.username}{customer.email && ` · ${customer.email}`}<br />
+            Login: {customer.username}{customer.email && ` · ${customer.email}`}{customer.phone && ` · ${customer.phone}`}<br />
             Ro'yxatdan o'tgan: {dayjs(customer.date_joined).format('DD.MM.YYYY')}<br />
             Jami xarid: <b>{formatPrice(customer.total_spent)}</b>
           </Typography.Paragraph>
@@ -63,7 +63,7 @@ export default function Customers() {
     <>
       <Typography.Title level={3} style={{ marginTop: 0 }}>Mijozlar</Typography.Title>
       <div className="toolbar">
-        <Input.Search placeholder="Ism, login, email" allowClear style={{ width: 260 }}
+        <Input.Search placeholder="Ism, login, email, telefon" allowClear style={{ width: 260 }}
                       defaultValue={filters.search} onSearch={v => update({ search: v })} />
         <Select placeholder="Turi" allowClear style={{ width: 160 }} value={filters.is_staff}
                 options={[{ value: 'false', label: 'Mijozlar' }, { value: 'true', label: 'Xodimlar' }]}
@@ -87,6 +87,7 @@ export default function Customers() {
               </>
             ),
           },
+          { title: 'Telefon', dataIndex: 'phone', render: p => p ? <a href={`tel:${p.replace(/\s/g, '')}`}>{p}</a> : '—' },
           { title: 'Login', dataIndex: 'username' },
           { title: 'Email', dataIndex: 'email', render: e => e || '—' },
           { title: 'Buyurtmalar', dataIndex: 'orders_count', align: 'center', sorter: true, sortOrder: sortOrder('orders_count') },

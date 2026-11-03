@@ -167,7 +167,7 @@ class OrderViewSet(
 class CustomerViewSet(AdminMixin, viewsets.ReadOnlyModelViewSet):
     section = "customers"
     serializer_class = s.CustomerSerializer
-    search_fields = ["username", "first_name", "last_name", "email"]
+    search_fields = ["username", "first_name", "last_name", "email", "profile__phone"]
     ordering_fields = ["date_joined", "orders_count", "total_spent"]
     filterset_fields = ["is_staff"]
 

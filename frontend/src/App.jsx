@@ -8,6 +8,7 @@ import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
 import { Login, Register } from './pages/Auth'
 import Orders from './pages/Orders'
+import Profile from './pages/Profile'
 import Favorites from './pages/Favorites'
 import { t } from './i18n'
 import { useStore } from './store'
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/orders" element={<Orders />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="*" element={<div className="empty">{t('Sahifa topilmadi')}</div>} />
         </Routes>

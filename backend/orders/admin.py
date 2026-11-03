@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Order, OrderItem
+from .models import CustomerProfile, Order, OrderItem
 
 
 class OrderItemInline(admin.TabularInline):
@@ -18,3 +18,9 @@ class OrderAdmin(admin.ModelAdmin):
     search_fields = ["id", "full_name", "phone"]
     readonly_fields = ["user", "total", "created_at"]
     inlines = [OrderItemInline]
+
+
+@admin.register(CustomerProfile)
+class CustomerProfileAdmin(admin.ModelAdmin):
+    list_display = ["user", "phone"]
+    search_fields = ["user__username", "user__email", "phone"]

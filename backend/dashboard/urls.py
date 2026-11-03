@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from payments.views import AdminPaymentMethodViewSet
 from staff.views import StaffViewSet
 from comments.views import AdminCommentViewSet
+from orders.store import AdminBranchViewSet, AdminStoreSettingsView
 
 from . import views
 
@@ -18,8 +19,10 @@ router.register("customers", views.CustomerViewSet, basename="admin-customer")
 router.register("payment-methods", AdminPaymentMethodViewSet, basename="admin-payment-method")
 router.register("staff", StaffViewSet, basename="admin-staff")
 router.register("comments", AdminCommentViewSet, basename="admin-comment")
+router.register("branches", AdminBranchViewSet, basename="admin-branch")
 
 urlpatterns = [
     path("stats/", views.StatsView.as_view()),
     path("image-rules/", views.ImageRulesView.as_view()),
+    path("store-settings/", AdminStoreSettingsView.as_view()),
 ] + router.urls

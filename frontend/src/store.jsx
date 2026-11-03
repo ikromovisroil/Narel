@@ -25,12 +25,15 @@ export function StoreProvider({ children }) {
     setLangState(code)
   }
 
-  useEffect(() => { document.title = t('TechShop — elektronika va maishiy texnika') }, [lang])
+  useEffect(() => { document.title = t('Narel — elektronika va maishiy texnika') }, [lang])
 
   // Admin Sozlamalarda yoqilgan to'lov usullari (nomlari joriy tilda)
   const [paymentMethods, setPaymentMethods] = useState([])
+  // Do'kon ma'lumotlari va yetkazib berish (telefon, manzil, yetkazish bor-yo'qligi)
+  const [storeInfo, setStoreInfo] = useState(null)
   useEffect(() => {
     api('/payment-methods/', { auth: false }).then(setPaymentMethods).catch(() => setPaymentMethods([]))
+    api('/store-settings/', { auth: false }).then(setStoreInfo).catch(() => {})
   }, [lang])
   // Muddatli to'lov yoqilgan bo'lsa — necha oyga; aks holda null (oylik narx ko'rsatilmaydi)
   const installmentMonths = paymentMethods.find(m => m.code === 'installment')?.months || null
@@ -100,7 +103,7 @@ export function StoreProvider({ children }) {
 
   return (
     <StoreContext.Provider value={{
-      user, login, logout, lang, changeLang, paymentMethods, installmentMonths, monthly,
+      user, setUser, login, logout, lang, changeLang, paymentMethods, installmentMonths, monthly, storeInfo,
       cart, cartCount, cartTotal, addToCart, setQty, removeFromCart, clearCart, refreshCart,
       favorites, isFavorite, toggleFavorite, clearFavorites, refreshFavorites,
     }}>

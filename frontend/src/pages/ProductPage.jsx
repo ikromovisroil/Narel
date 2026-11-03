@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, formatPrice } from '../api'
 import Comments from '../components/Comments'
+import SimilarProducts from '../components/SimilarProducts'
 import { HeartIcon } from '../components/Icons'
 import { ProductImage } from '../components/ProductCard'
+import { pickupWhere } from '../components/StoreInfo'
 import { t } from '../i18n'
 import { useStore } from '../store'
 
 export default function ProductPage() {
   const { slug } = useParams()
   const navigate = useNavigate()
-  const { addToCart, cart, isFavorite, toggleFavorite, installmentMonths, monthly } = useStore()
+  const { addToCart, cart, isFavorite, toggleFavorite, installmentMonths, monthly, storeInfo } = useStore()
   const [p, setP] = useState(null)
   const [error, setError] = useState(false)
   const [img, setImg] = useState(null)
@@ -92,11 +94,19 @@ export default function ProductPage() {
             {isFavorite(p.id) ? t('Sevimlilarda') : t("Sevimlilarga qo'shish")}
           </button>
           <ul className="perks-list muted small">
-            <li>🚚 {t("Toshkent bo'ylab bepul yetkazish")}</li>
+            {storeInfo?.delivery_enabled ? (
+              <li>🚚 {Number(storeInfo.delivery_price)
+                ? t('Yetkazib berish: {sum}', { sum: formatPrice(storeInfo.delivery_price) })
+                : t('Bepul yetkazish')}{storeInfo.delivery_note && ` · ${storeInfo.delivery_note}`}</li>
+            ) : storeInfo?.pickup_enabled && (
+              <li>🏬 {t("Do'kondan olib ketish")}: {pickupWhere(storeInfo)}</li>
+            )}
             <li>🛡 {t('Rasmiy kafolat')}</li>
           </ul>
         </div>
       </div>
+
+      <SimilarProducts slug={p.slug} />
 
       <div className="tabs">
         <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('Xususiyatlar')}</button>
@@ -107,7 +117,7 @@ export default function ProductPage() {
           {commentSummary?.rating && <span className="tab-rating">★ {commentSummary.rating}</span>}
         </button>
       </div>
-      <div className={`tab-body ${tab === 'comments' ? 'wide' : ''}`}>
+      <div className="tab-body">
         {tab === 'specs' && (
           <dl className="specs">
             {p.specs.map(s => <div key={s.name}><dt>{s.name}</dt><dd>{s.value}</dd></div>)}
@@ -119,6 +129,7 @@ export default function ProductPage() {
           <Comments slug={p.slug} onSummary={setCommentSummary} />
         </div>
       </div>
+
     </div>
   )
 }

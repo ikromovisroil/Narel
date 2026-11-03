@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  App, Button, DatePicker, Descriptions, Drawer, Input, Popconfirm, Select, Space, Steps, Table, Tag, Typography,
+  Alert, App, Button, DatePicker, Descriptions, Drawer, Input, Popconfirm, Select, Space, Steps, Table, Tag, Typography,
 } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -10,6 +10,93 @@ import { DELIVERY, formatPrice, options, ORDER_STATUS, PAYMENT } from '../utils'
 import { useCanEdit } from '../auth'
 
 const FLOW = ['new', 'confirmed', 'shipped', 'delivered']
+
+// Kuryer buyurtmasi: qabul qilishda sana majburiy, keyin o'zgartirish (kechikish izohi bilan)
+function DeliveryDateBox({ order, canEdit, onSaved }) {
+  const { message } = App.useApp()
+  const today = dayjs().startOf('day')
+  const initial = order.expected_date && !dayjs(order.expected_date).isBefore(today) ? dayjs(order.expected_date) : null
+  const [date, setDate] = useState(initial)
+  const [note, setNote] = useState(order.delay_note || '')
+  const [saving, setSaving] = useState(false)
+  const promised = order.original_expected_date ? dayjs(order.original_expected_date) : null
+  const finished = ['delivered', 'cancelled'].includes(order.status)
+  const fmt = d => dayjs(d).format('DD.MM.YYYY')
+
+  const save = async body => {
+    setSaving(true)
+    try {
+      onSaved(await api(`/admin/orders/${order.id}/`, { method: 'PATCH', body }))
+      message.success(body.status ? 'Buyurtma qabul qilindi — mijoz yetkazish sanasini ko\'radi' : 'Sana saqlandi — mijoz yangisini ko\'radi')
+    } catch (err) {
+      message.error(errorText(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Yetkazilgan yoki bekor qilingan — faqat ko'rish
+  if (finished || !canEdit) {
+    return (
+      <div className="date-box">
+        <b>Taxminiy yetkazish:</b> {order.expected_date ? fmt(order.expected_date) : '—'}
+        {promised && order.expected_date !== order.original_expected_date && (
+          <Typography.Text type="secondary"> (va'da: {fmt(promised)})</Typography.Text>
+        )}
+        {finished && <Typography.Text type="secondary"> · yakunlangan buyurtma, sanani o'zgartirib bo'lmaydi</Typography.Text>}
+      </div>
+    )
+  }
+
+  if (order.status === 'new') {
+    return (
+      <div className="date-box accept">
+        <b>Buyurtmani qabul qilish</b>
+        <Typography.Text type="secondary">
+          Mijozga yetkazib beriladigan taxminiy sanani tanlang — u "Buyurtmalarim"da ko'rinadi. Sana tanlanmasa qabul qilib bo'lmaydi.
+        </Typography.Text>
+        <Space wrap>
+          <DatePicker format="DD.MM.YYYY" placeholder="Yetkazish sanasi" value={date} onChange={setDate}
+                      disabledDate={d => d.isBefore(today)} status={date ? '' : 'warning'} />
+          <Button type="primary" loading={saving} disabled={!date}
+                  onClick={() => save({ status: 'confirmed', expected_date: date.format('YYYY-MM-DD') })}>
+            Qabul qilish
+          </Button>
+        </Space>
+      </div>
+    )
+  }
+
+  // Tasdiqlangan / Yuborilgan — sanani o'zgartirish mumkin
+  const later = date && promised && date.isAfter(promised, 'day')
+  const changed = date && date.format('YYYY-MM-DD') !== order.expected_date
+  return (
+    <div className={`date-box ${order.is_delayed ? 'late' : ''}`}>
+      <b>Taxminiy yetkazish</b>
+      {promised && <Typography.Text type="secondary">Mijozga va'da qilingan sana: {fmt(promised)}</Typography.Text>}
+      <Space wrap>
+        <DatePicker format="DD.MM.YYYY" value={date} onChange={setDate} allowClear={false}
+                    disabledDate={d => d.isBefore(today)} />
+        <Button loading={saving} disabled={!date || (!changed && note === (order.delay_note || ''))}
+                onClick={() => save({ expected_date: date.format('YYYY-MM-DD'), delay_note: later ? note : '' })}>
+          Sanani saqlash
+        </Button>
+      </Space>
+      {later && (
+        <>
+          <Alert type="warning" showIcon
+                 title="Sana va'da qilinganidan keyinga surilmoqda — mijozga kechikish uchun uzr xabari ko'rsatiladi." />
+          <Input.TextArea rows={2} maxLength={255} showCount value={note} onChange={e => setNote(e.target.value)}
+                          placeholder="Kechikish sababi (ixtiyoriy, mijozga ko'rinadi). Masalan: Ombordan kech yetib keldi"
+                          style={{ marginBottom: 16 }} />
+        </>
+      )}
+      {order.is_delayed && !later && (
+        <Alert type="error" showIcon title="Yetkazish sanasi o'tib ketdi — yangi sanani belgilang, mijozga uzr xabari chiqmoqda." />
+      )}
+    </div>
+  )
+}
 
 function OrderDrawer({ id, onClose, onChanged }) {
   const canEdit = useCanEdit('orders')
@@ -56,7 +143,7 @@ function OrderDrawer({ id, onClose, onChanged }) {
           {cancelled ? <Tag color="red" style={{ fontSize: 14, padding: 6 }}>Bekor qilingan</Tag> : (
             <>
               <Steps current={step} size="small" items={FLOW.map(s => ({ title: ORDER_STATUS[s].label }))} />
-              {next && canEdit && (
+              {next && canEdit && !(order.status === 'new' && order.delivery_method === 'courier') && (
                 <Button type="primary" block loading={saving} onClick={() => setStatus(next)}>
                   "{ORDER_STATUS[next].label}" holatiga o'tkazish
                 </Button>
@@ -64,15 +151,26 @@ function OrderDrawer({ id, onClose, onChanged }) {
             </>
           )}
 
+          {order.delivery_method === 'courier' && (
+            <DeliveryDateBox
+              key={`${order.status}-${order.expected_date}`} order={order} canEdit={canEdit}
+              onSaved={o => { setOrder(o); onChanged(); window.dispatchEvent(new Event('orders-changed')) }}
+            />
+          )}
+
           <Descriptions column={1} bordered size="small" items={[
             { label: 'Mijoz', children: order.full_name },
             { label: 'Telefon', children: <a href={`tel:${order.phone}`}>{order.phone}</a> },
             { label: 'Hisob', children: order.username },
             { label: 'Yetkazish', children: DELIVERY[order.delivery_method] },
+            ...(order.delivery_method === 'pickup' ? [{ label: 'Filial', children: <b>{order.pickup_point || '—'}</b> }] : []),
             { label: 'Manzil', children: order.address || '—' },
             { label: 'To\'lov', children: PAYMENT[order.payment_method] },
             { label: 'Izoh', children: order.note || '—' },
             { label: 'Sana', children: dayjs(order.created_at).format('DD.MM.YYYY HH:mm') },
+            ...(order.delivery_method === 'courier' ? [
+              { label: 'Yetkazish narxi', children: Number(order.delivery_price) ? formatPrice(order.delivery_price) : 'Bepul' },
+            ] : []),
           ]} />
 
           <Table
@@ -167,7 +265,19 @@ export default function Orders() {
           { title: 'Summa', dataIndex: 'total', render: formatPrice, align: 'right' },
           { title: 'To\'lov', dataIndex: 'payment_method', render: p => PAYMENT[p] },
           { title: 'Yetkazish', dataIndex: 'delivery_method', render: d => DELIVERY[d] },
-          { title: 'Holati', dataIndex: 'status', render: s => <Tag color={ORDER_STATUS[s].color}>{ORDER_STATUS[s].label}</Tag> },
+          {
+            title: 'Holati', dataIndex: 'status',
+            render: (st, o) => (
+              <Space size={4} wrap>
+                <Tag color={ORDER_STATUS[st].color}>{ORDER_STATUS[st].label}</Tag>
+                {o.is_delayed && <Tag color="red">Kechikmoqda</Tag>}
+              </Space>
+            ),
+          },
+          {
+            title: 'Yetkazish sanasi', dataIndex: 'expected_date',
+            render: d => (d ? dayjs(d).format('DD.MM.YYYY') : <Typography.Text type="secondary">—</Typography.Text>),
+          },
           { title: 'Sana', dataIndex: 'created_at', render: d => dayjs(d).format('DD.MM.YYYY HH:mm') },
         ]}
       />

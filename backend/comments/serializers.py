@@ -37,7 +37,7 @@ class CommentSerializer(serializers.ModelSerializer):
         # oldindan yuklangan ko'rinadigan javoblar (views.py da prefetch)
         replies = getattr(obj, "visible_replies", None)
         if replies is None:
-            replies = obj.replies.filter(is_hidden=False).select_related("user").order_by("created_at")
+            replies = obj.replies.filter(is_hidden=False).select_related("user").order_by("created_at", "id")
         return CommentSerializer(replies, many=True, context=self.context).data
 
     def validate_text(self, value):
@@ -65,12 +65,14 @@ class AdminCommentSerializer(serializers.ModelSerializer):
     product_slug = serializers.CharField(source="product.slug", read_only=True)
     parent_text = serializers.CharField(source="parent.text", read_only=True, default=None)
     replies_count = serializers.IntegerField(read_only=True, default=0)
+    staff_replied = serializers.BooleanField(read_only=True, default=False)
+    is_staff = serializers.BooleanField(source="user.is_staff", read_only=True)
 
     class Meta:
         model = Comment
         fields = [
-            "id", "product", "product_name", "product_slug", "author", "username", "parent", "parent_text",
-            "text", "rating", "is_hidden", "replies_count", "created_at",
+            "id", "product", "product_name", "product_slug", "author", "username", "is_staff", "parent",
+            "parent_text", "text", "rating", "is_hidden", "replies_count", "staff_replied", "created_at",
         ]
         read_only_fields = [f for f in fields if f != "is_hidden"]
 

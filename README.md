@@ -1,4 +1,4 @@
-# TechShop
+# Narel
 
 Elektronika va maishiy texnika onlayn do'koni: Django REST API + React (Vite) + PostgreSQL.
 

@@ -1,7 +1,10 @@
 import django_filters
-from django.db.models import Q
+from django.db.models import Case, F, IntegerField, Q, Value, When
+from django.db.models.functions import Abs
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.filters import OrderingFilter, SearchFilter
 
 from .i18n import has_cyrillic, to_latin
@@ -97,3 +100,29 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_serializer_class(self):
         return ProductDetailSerializer if self.action == "retrieve" else ProductListSerializer
+
+    SIMILAR_LIMIT = 10
+
+    @action(detail=True, methods=["get"])
+    def similar(self, request, slug=None):
+        """O'xshash mahsulotlar: shu kategoriyadan, yetmasa ota kategoriyadan.
+        Tartib: avval shu brend, keyin narxi yaqini. Faqat sotuvda borlari."""
+        product = self.get_object()
+        base = (
+            Product.objects.filter(is_active=True, stock__gt=0)
+            .exclude(pk=product.pk)
+            .select_related("category", "brand")
+            .annotate(
+                same_brand=Case(When(brand_id=product.brand_id, then=Value(0)), default=Value(1), output_field=IntegerField()),
+                price_gap=Abs(F("price") - product.price),
+            )
+            .order_by("same_brand", "price_gap", "-created_at")
+        )
+        items = list(base.filter(category_id=product.category_id)[: self.SIMILAR_LIMIT])
+        if len(items) < self.SIMILAR_LIMIT and product.category.parent_id:
+            taken = [p.pk for p in items]
+            items += list(
+                base.filter(category__parent_id=product.category.parent_id)
+                .exclude(pk__in=taken)[: self.SIMILAR_LIMIT - len(items)]
+            )
+        return Response(ProductListSerializer(items, many=True, context=self.get_serializer_context()).data)

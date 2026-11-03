@@ -73,3 +73,52 @@ class CommentTests(APITestCase):
         for i in range(10):
             self.assertEqual(self.post(self.ali, text=f"Izoh {i}").status_code, 201)
         self.assertEqual(self.post(self.ali, text="Yana bittasi").status_code, 429)
+
+
+class AdminReplyTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        cat = Category.objects.create(name="C", slug="c")
+        self.product = Product.objects.create(name="P", slug="p", category=cat, price=10)
+        self.client_user = User.objects.create_user("ali", password="x", first_name="Ali")
+        self.question = Comment.objects.create(product=self.product, user=self.client_user, text="Kafolat bormi?")
+        self.other = Comment.objects.create(product=self.product, user=self.client_user, text="Rangi qanday?")
+        self.operator = User.objects.create_user("op", password="x", is_staff=True, first_name="Operator")
+        StaffProfile.objects.create(user=self.operator, permissions={"comments": ["view", "add"]})
+
+    def test_reply_shows_on_site_with_store_badge(self):
+        self.client.force_authenticate(self.operator)
+        r = self.client.post(f"/api/admin/comments/{self.question.id}/reply/", {"text": "Ha, 1 yil rasmiy kafolat."}, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertTrue(r.data["is_staff"])
+        self.assertEqual(r.data["parent"], self.question.id)
+
+        self.client.force_authenticate(None)
+        thread = next(c for c in self.client.get("/api/products/p/comments/").json()["results"] if c["id"] == self.question.id)
+        self.assertEqual(thread["replies"][0]["text"], "Ha, 1 yil rasmiy kafolat.")
+        self.assertTrue(thread["replies"][0]["is_staff"])
+
+    def test_reply_to_reply_goes_to_same_thread(self):
+        answer = Comment.objects.create(product=self.product, user=self.client_user, parent=self.question, text="Yana savol")
+        self.client.force_authenticate(self.operator)
+        r = self.client.post(f"/api/admin/comments/{answer.id}/reply/", {"text": "Javob"}, format="json")
+        self.assertEqual(r.data["parent"], self.question.id)
+
+    def test_unanswered_filter_and_flag(self):
+        self.client.force_authenticate(self.operator)
+        self.client.post(f"/api/admin/comments/{self.question.id}/reply/", {"text": "Ha, bor."}, format="json")
+        ids = [c["id"] for c in self.client.get("/api/admin/comments/?kind=unanswered").json()["results"]]
+        self.assertEqual(ids, [self.other.id])
+        rows = {c["id"]: c for c in self.client.get("/api/admin/comments/").json()["results"]}
+        self.assertTrue(rows[self.question.id]["staff_replied"])
+        self.assertFalse(rows[self.other.id]["staff_replied"])
+
+    def test_permissions_and_validation(self):
+        viewer = User.objects.create_user("v", password="x", is_staff=True)
+        StaffProfile.objects.create(user=viewer, permissions={"comments": ["view"]})
+        self.client.force_authenticate(viewer)
+        self.assertEqual(self.client.post(f"/api/admin/comments/{self.question.id}/reply/", {"text": "Salom"}, format="json").status_code, 403)
+        self.client.force_authenticate(self.operator)
+        self.assertEqual(self.client.post(f"/api/admin/comments/{self.question.id}/reply/", {"text": " "}, format="json").status_code, 400)
+        # Faqat "add" bor — yashira olmaydi
+        self.assertEqual(self.client.patch(f"/api/admin/comments/{self.question.id}/", {"is_hidden": True}, format="json").status_code, 403)

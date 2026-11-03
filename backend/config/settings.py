@@ -123,3 +123,6 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
+
+# Kirish: login, email yoki telefon raqami bilan
+AUTHENTICATION_BACKENDS = ["orders.auth.LoginEmailPhoneBackend"]

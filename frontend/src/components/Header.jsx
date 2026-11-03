@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { api, SHOP_NAME } from '../api'
+import { api } from '../api'
+import Logo from './Logo'
 import { LANGS, t } from '../i18n'
 import { useStore } from '../store'
 import { BoxIcon, CartIcon, HeartIcon, LogoutIcon, UserIcon } from './Icons'
@@ -19,7 +20,7 @@ function LangSwitch() {
 }
 
 export default function Header() {
-  const { user, logout, cartCount, favorites } = useStore()
+  const { user, logout, cartCount, favorites, storeInfo } = useStore()
   const [categories, setCategories] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [active, setActive] = useState(null)
@@ -41,15 +42,19 @@ export default function Header() {
     <header className="header">
       <div className="topbar">
         <div className="container topbar-inner">
-          <span className="info">📍 {t('Toshkent')}</span>
-          <span className="info">☎ +998 71 000 00 00</span>
-          <span className="info muted">{t('Har kuni 9:00 – 21:00')}</span>
+          {storeInfo && (
+            <>
+              <span className="info info-address">📍 {storeInfo.address}</span>
+              <a className="info" href={`tel:${storeInfo.phone.replace(/[^\d+]/g, '')}`}>☎ {storeInfo.phone}</a>
+              {storeInfo.working_hours && <span className="info muted">{storeInfo.working_hours}</span>}
+            </>
+          )}
           <LangSwitch />
         </div>
       </div>
 
       <div className="container header-main">
-        <Link to="/" className="logo">{SHOP_NAME}</Link>
+        <Logo />
 
         <button className="btn btn-catalog" onClick={() => setMenuOpen(o => !o)}>
           {menuOpen ? '✕' : '☰'} <span className="label">{t('Katalog')}</span>
@@ -63,6 +68,9 @@ export default function Header() {
         <nav className="header-icons">
           {user ? (
             <>
+              <NavLink to="/profile" className="icon-link" title={`${user.first_name} ${user.last_name}`.trim() || user.username}>
+                <span className="ico"><UserIcon /></span>{t('Profil')}
+              </NavLink>
               <NavLink to="/orders" className="icon-link"><span className="ico"><BoxIcon /></span>{t('Buyurtmalar')}</NavLink>
               <button className="icon-link" onClick={logout}><span className="ico"><LogoutIcon /></span>{t('Chiqish')}</button>
             </>

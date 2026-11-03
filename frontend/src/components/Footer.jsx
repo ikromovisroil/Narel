@@ -1,13 +1,16 @@
 import { Link } from 'react-router-dom'
 import { SHOP_NAME } from '../api'
+import Logo from './Logo'
 import { t } from '../i18n'
+import { useStore } from '../store'
 
 export default function Footer() {
+  const { storeInfo } = useStore()
   return (
     <footer className="footer">
       <div className="container footer-grid">
         <div>
-          <div className="logo">{SHOP_NAME}</div>
+          <Logo dark link={false} />
           <p className="muted">{t("Elektronika va maishiy texnika. Rasmiy kafolat, tez yetkazib berish, muddatli to'lov.")}</p>
         </div>
         <div>
@@ -18,9 +21,10 @@ export default function Footer() {
         </div>
         <div>
           <h4>{t("Bog'lanish")}</h4>
-          <span>+998 71 000 00 00</span>
-          <span>info@techshop.uz</span>
-          <span className="muted">{t('Toshkent sh.')}</span>
+          {storeInfo && <a href={`tel:${storeInfo.phone.replace(/[^\d+]/g, '')}`}>{storeInfo.phone}</a>}
+          <span>info@narel.uz</span>
+          {storeInfo && <span className="muted">{storeInfo.address}</span>}
+          {storeInfo?.working_hours && <span className="muted">{storeInfo.working_hours}</span>}
         </div>
       </div>
       <div className="container copyright muted">© 2026 {SHOP_NAME}</div>

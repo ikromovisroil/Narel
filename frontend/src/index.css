@@ -67,8 +67,11 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .lang-switch button { border: 0; background: none; padding: 3px 10px; border-radius: 6px; font-size: 13px; color: var(--muted); }
 .lang-switch button.on { background: #fff; color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 .header-main { display: flex; align-items: center; gap: 16px; padding-top: 14px; padding-bottom: 14px; }
-.logo { font-size: 26px; font-weight: 800; color: var(--primary); letter-spacing: -0.5px; }
-.logo::first-letter { color: var(--accent); }
+.logo { display: inline-flex; align-items: center; gap: 8px; color: #0f1b2d; text-decoration: none; }
+.logo:hover { color: #0f1b2d; }
+.logo svg { flex-shrink: 0; }
+.logo-text { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; }
+.logo-dark, .logo-dark:hover { color: #fff; }
 .btn-catalog { background: var(--accent); }
 .btn-catalog:hover { background: #e65f00; }
 .search { flex: 1; display: flex; border: 2px solid var(--primary); border-radius: 12px; overflow: hidden; }
@@ -208,7 +211,9 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .tabs { display: flex; gap: 24px; margin-top: 40px; border-bottom: 1px solid var(--border); }
 .tabs button { background: none; border: 0; padding: 12px 0; font-size: 17px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; }
 .tabs button.on { color: var(--text); border-color: var(--primary); }
-.tab-body { background: #fff; border-radius: 0 0 var(--radius) var(--radius); padding: 20px; max-width: 800px; }
+.tab-body { background: #fff; border-radius: 0 0 var(--radius) var(--radius); padding: 20px 24px; }
+/* To'liq kenglikda xususiyat nomi va qiymati bir-biridan uzoqlashib ketmasin */
+.tab-body .specs div { grid-template-columns: minmax(160px, 320px) 1fr; }
 .description { white-space: pre-line; line-height: 1.6; margin: 0; }
 
 /* Savat va buyurtma */
@@ -273,7 +278,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 32px; }
 .footer-grid > div { display: grid; gap: 8px; align-content: start; }
 .footer h4 { color: #fff; margin-bottom: 4px; }
-.footer .logo { color: #fff; }
+.footer .logo { margin-bottom: 4px; }
 .copyright { margin-top: 32px; padding-top: 16px; border-top: 1px solid #333844; font-size: 13px; }
 
 /* Moslashuvchan */
@@ -290,7 +295,9 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
      Yopishqoq emas — kontentni yopmasin */
   .header { position: relative; }
   .header-main { flex-wrap: wrap; gap: 8px 10px; padding-top: 10px; padding-bottom: 10px; }
-  .logo { order: 1; font-size: 22px; }
+  .logo { order: 1; }
+  .logo svg { width: 30px; height: 30px; }
+  .logo-text { font-size: 22px; }
   .header-icons { order: 2; margin-left: auto; gap: 6px; }
   .btn-catalog { order: 3; padding: 10px 13px; }
   .btn-catalog .label { display: none; }
@@ -331,8 +338,10 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 }
 
 /* Izohlar */
-.tab-body.wide { max-width: 860px; }
-.tab-count { margin-left: 6px; background: #eef3ff; color: var(--primary); border-radius: 10px; padding: 1px 8px; font-size: 13px; }
+.tab-count {
+  margin-left: 6px; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 7px;
+  background: #0f1b2d; color: #fff; border-radius: 11px; font-size: 12px; font-weight: 700; vertical-align: 2px;
+}
 .tab-rating { margin-left: 6px; color: #f5a400; font-size: 14px; }
 .stars { display: inline-flex; gap: 1px; line-height: 1; }
 .stars span, .stars button { color: #d6d9e0; background: none; border: 0; padding: 0; font-size: inherit; }
@@ -364,3 +373,57 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
   .tabs { gap: 16px; overflow-x: auto; }
   .tabs button { white-space: nowrap; font-size: 15px; }
 }
+
+/* Do'kon ma'lumotlari, yetkazish va buyurtma holati */
+.store-info { display: grid; gap: 4px; background: #f6f8fc; border-radius: 10px; padding: 12px 14px; font-size: 14px; text-align: left; }
+.store-info-title { margin-bottom: 2px; }
+.notice { display: grid; gap: 8px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 12px 14px; }
+.notice .store-info { background: #fff; }
+.expected { font-weight: 600; margin: 4px 0 8px; }
+.expected.done { color: var(--ok); }
+.expected.late { color: var(--accent); }
+.timeline { list-style: none; padding: 0; margin: 12px 0; display: grid; grid-template-columns: repeat(4, 1fr); }
+.timeline li { position: relative; display: grid; justify-items: center; gap: 6px; text-align: center; font-size: 12px; color: var(--muted); }
+.timeline li::before { content: ''; position: absolute; top: 13px; left: -50%; width: 100%; height: 3px; background: var(--border); z-index: 0; }
+.timeline li:first-child::before { display: none; }
+.timeline li.done::before, .timeline li.current::before { background: var(--primary); }
+.timeline .dot { position: relative; z-index: 1; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid var(--border); font-weight: 700; font-size: 12px; }
+.timeline li.done .dot { background: var(--primary); border-color: var(--primary); color: #fff; }
+.timeline li.current .dot { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 0 4px #e3ebff; }
+.timeline li.current .label { color: var(--text); font-weight: 600; }
+.order-cancelled { color: var(--danger); font-weight: 600; margin: 8px 0; }
+.order-items { border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 4px; }
+.order-head { flex-wrap: wrap; }
+.topbar a.info { color: inherit; }
+@media (max-width: 1024px) { .info-address { display: none; } }
+
+/* Tasdiqlash oynasi (window.confirm o'rniga) */
+.confirm-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(15, 27, 45, .45); display: grid; place-items: center; padding: 16px; }
+.confirm-box { background: #fff; border-radius: 14px; padding: 22px; width: 100%; max-width: 380px; display: grid; gap: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.2); }
+.confirm-title { font-size: 17px; }
+.confirm-box p { margin: 0; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+.btn-danger { background: var(--danger); }
+.btn-danger:hover { background: #c92a2d; }
+
+/* Majburiy maydonlar */
+.req { color: var(--danger); }
+.field-error { color: var(--danger); font-size: 13px; }
+input.invalid, textarea.invalid { border-color: var(--danger); background: #fff7f7; }
+
+/* Kechikish haqida uzr */
+.delay-box { display: grid; gap: 4px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 12px 14px; margin: 6px 0 10px; font-size: 14px; }
+.delay-box b { color: #c2410c; }
+
+/* Registratsiya: email / login tanlovi */
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: #f1f4f9; border-radius: 10px; padding: 4px; gap: 4px; }
+.seg button { border: 0; background: none; padding: 9px; border-radius: 8px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.seg button.on { background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.profile { max-width: 520px; }
+/* Checkout: qabul qiluvchi va filial tanlash */
+.recipient { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #f6f8fc; border-radius: 10px; padding: 12px 14px; }
+.recipient > div { display: grid; gap: 2px; }
+.branch-pick { display: grid; gap: 8px; }
+.branch-pick .label-text { font-size: 14px; color: var(--muted); }
+.choices.branches { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.choices.branches .choice { gap: 4px; }

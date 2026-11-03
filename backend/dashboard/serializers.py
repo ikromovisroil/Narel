@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils import timezone
 from django.db.models import F
 from rest_framework import serializers
 
@@ -166,18 +167,60 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "id", "user", "username", "full_name", "phone", "address", "note",
-            "payment_method", "delivery_method", "status", "total", "items_count",
+            "payment_method", "delivery_method", "status", "delivery_price", "expected_date",
+            "original_expected_date", "delay_note", "is_delayed", "pickup_point", "total", "items_count",
             "created_at", "items",
         ]
-        read_only_fields = [f for f in fields if f != "status"]
+        read_only_fields = [f for f in fields if f not in ("status", "expected_date", "delay_note")]
+
+    is_delayed = serializers.BooleanField(read_only=True)
 
     def validate_status(self, value):
         if self.instance and self.instance.status == Order.Status.CANCELLED and value != Order.Status.CANCELLED:
             raise serializers.ValidationError("Bekor qilingan buyurtmani qayta tiklab bo'lmaydi.")
         return value
 
+    def validate_expected_date(self, value):
+        if value and value < timezone.localdate():
+            raise serializers.ValidationError("O'tgan sanani tanlab bo'lmaydi.")
+        return value
+
+    def validate(self, attrs):
+        order = self.instance
+        status = attrs.get("status", order.status)
+        date_given = "expected_date" in attrs
+        date = attrs.get("expected_date", order.expected_date)
+
+        if date_given and order.status in (Order.Status.DELIVERED, Order.Status.CANCELLED):
+            raise serializers.ValidationError({"expected_date": "Yakunlangan buyurtmaning sanasini o'zgartirib bo'lmaydi."})
+
+        # Kuryer buyurtmasini qabul qilishda yetkazish sanasi majburiy
+        accepting = order.status == Order.Status.NEW and status in (Order.Status.CONFIRMED, Order.Status.SHIPPED)
+        if accepting and order.delivery_method == Order.Delivery.COURIER:
+            if not date_given or not date:
+                raise serializers.ValidationError(
+                    {"expected_date": "Qabul qilish uchun taxminiy yetkazish sanasini tanlang."}
+                )
+        if order.delivery_method == Order.Delivery.COURIER and date_given and not date and order.status != Order.Status.NEW:
+            raise serializers.ValidationError({"expected_date": "Qabul qilingan buyurtmada sana bo'lishi shart."})
+        return attrs
+
     @transaction.atomic
     def update(self, instance, validated_data):
+        accepting = instance.status == Order.Status.NEW and validated_data.get("status") in (
+            Order.Status.CONFIRMED, Order.Status.SHIPPED
+        )
+        date = validated_data.get("expected_date", instance.expected_date)
+        # Qabul qilingan paytdagi sana — mijozga berilgan va'da
+        if accepting and date and not instance.original_expected_date:
+            validated_data["original_expected_date"] = date
+        # Sana va'dadan oldinga qaytsa, kechikish izohi kerak emas
+        promised = validated_data.get("original_expected_date", instance.original_expected_date)
+        if promised and date and date <= promised and "delay_note" not in validated_data:
+            validated_data["delay_note"] = ""
+        return self._update(instance, validated_data)
+
+    def _update(self, instance, validated_data):
         new_status = validated_data.get("status")
         if new_status == Order.Status.CANCELLED and instance.status != Order.Status.CANCELLED:
             # Bekor qilinganda mahsulotlar omborga qaytadi
@@ -193,7 +236,9 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id", "username", "first_name", "last_name", "email", "is_staff",
+            "id", "username", "first_name", "last_name", "email", "phone", "is_staff",
             "is_active", "date_joined", "last_login", "orders_count", "total_spent",
         ]
         read_only_fields = fields
+
+    phone = serializers.CharField(source="profile.phone", default="", read_only=True)

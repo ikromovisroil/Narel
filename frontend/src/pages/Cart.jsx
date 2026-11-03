@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { formatPrice } from '../api'
+import ConfirmButton from '../components/ConfirmButton'
 import { HeartIcon, TrashIcon } from '../components/Icons'
 import { ProductImage } from '../components/ProductCard'
 import { t } from '../i18n'
@@ -8,7 +9,7 @@ import { useStore } from '../store'
 
 export default function Cart() {
   const {
-    cart, cartTotal, cartCount, setQty, removeFromCart, clearCart, refreshCart, isFavorite, toggleFavorite,
+    cart, cartTotal, cartCount, setQty, removeFromCart, clearCart, refreshCart, isFavorite, toggleFavorite, storeInfo,
   } = useStore()
   const navigate = useNavigate()
 
@@ -62,14 +63,25 @@ export default function Cart() {
             </div>
           ))}
           <div className="list-footer">
-            <button className="clear-btn" onClick={() => window.confirm(t('Savatni tozalaysizmi?')) && clearCart()}>
+            <ConfirmButton className="clear-btn" title={t('Savatni tozalaysizmi?')}
+                           text={t("Savatdagi barcha mahsulotlar olib tashlanadi.")} okLabel={t('Tozalash')}
+                           onConfirm={clearCart}>
               <TrashIcon size={16} /> {t('Savatni tozalash')}
-            </button>
+            </ConfirmButton>
           </div>
         </div>
         <div className="buy-box">
           <div className="row-between"><span>{t('Mahsulotlar ({n})', { n: cartCount })}</span><span>{formatPrice(cartTotal)}</span></div>
-          <div className="row-between"><span>{t('Yetkazib berish')}</span><span className="ok">{t('Bepul')}</span></div>
+          {storeInfo?.delivery_enabled ? (
+            <div className="row-between">
+              <span>{t('Yetkazib berish')}</span>
+              {Number(storeInfo.delivery_price)
+                ? <span>{formatPrice(storeInfo.delivery_price)}</span>
+                : <span className="ok">{t('Bepul')}</span>}
+            </div>
+          ) : storeInfo && (
+            <div className="row-between"><span>{t("Do'kondan olib ketish")}</span><span className="ok">{t('Bepul')}</span></div>
+          )}
           <hr />
           <div className="row-between big"><span>{t('Jami')}</span><strong>{formatPrice(cartTotal)}</strong></div>
           <button className="btn btn-lg" onClick={() => navigate('/checkout')}>{t('Rasmiylashtirish')}</button>

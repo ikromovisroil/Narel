@@ -9,6 +9,7 @@ from catalog.views import BannerViewSet, BrandViewSet, CategoryViewSet, ProductV
 from orders.views import MeView, OrderViewSet, RegisterView
 from payments.views import PublicPaymentMethodViewSet
 from comments.views import MyCommentView, ProductCommentsView
+from orders.store import PublicStoreSettingsView
 
 router = DefaultRouter()
 router.register("categories", CategoryViewSet, basename="category")
@@ -23,6 +24,7 @@ urlpatterns = [
     path("api/admin/", include("dashboard.urls")),
     path("api/products/<slug:slug>/comments/", ProductCommentsView.as_view()),
     path("api/comments/<int:pk>/", MyCommentView.as_view()),
+    path("api/store-settings/", PublicStoreSettingsView.as_view()),
     path("api/", include(router.urls)),
     path("api/auth/register/", RegisterView.as_view()),
     path("api/auth/login/", TokenObtainPairView.as_view()),

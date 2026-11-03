@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { api, errorText } from '../api'
 import { t } from '../i18n'
 import { useStore } from '../store'
+import ConfirmButton from './ConfirmButton'
 
 function Stars({ value, onChange, size = 18 }) {
   return (
@@ -70,7 +71,12 @@ function CommentItem({ c, onReply, onDelete, isReply }) {
         <p className="comment-text">{c.text}</p>
         <div className="comment-actions">
           {onReply && <button className="link small" onClick={onReply}>{t('Javob berish')}</button>}
-          {c.is_mine && <button className="link small danger" onClick={() => onDelete(c)}>{t("O'chirish")}</button>}
+          {c.is_mine && (
+            <ConfirmButton className="link small danger" title={t("Izohni o'chirasizmi?")} okLabel={t("O'chirish")}
+                           onConfirm={() => onDelete(c)}>
+              {t("O'chirish")}
+            </ConfirmButton>
+          )}
         </div>
       </div>
     </div>
@@ -109,7 +115,6 @@ export default function Comments({ slug, onSummary }) {
   }
 
   const remove = async c => {
-    if (!window.confirm(t("Izohni o'chirasizmi?"))) return
     await api(`/comments/${c.id}/`, { method: 'DELETE' })
     await load(1)
   }

@@ -10,6 +10,8 @@ def required_action(request, view):
     """So'rovga qaysi amal kerakligini aniqlaydi: view / add / change / delete."""
     if request.method in SAFE_METHODS:
         return "view"
+    if getattr(view, "write_action", None):
+        return view.write_action
     if getattr(view, "action", None) in CHANGE_ACTIONS:
         return "change"  # rasm yuklash/o'chirish — yozuvni tahrirlash
     if request.method == "POST":
