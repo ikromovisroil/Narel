@@ -12,6 +12,9 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from audit.log import record
+from audit.models import AuditLog
+
 from .integrations import google_client_ids
 from .models import CustomerProfile
 
@@ -73,12 +76,18 @@ class GoogleLoginView(APIView):
             return Response({"detail": _msg(request, "bad")}, status=status.HTTP_400_BAD_REQUEST)
 
         email = info["email"].strip().lower()
-        user = User.objects.filter(email__iexact=email).order_by("id").first()
+        user = User.objects.filter(email__iexact=email).select_related("profile").order_by("id").first()
+        if user is not None and user.is_staff:
+            return Response({"detail": _msg(request, "staff")}, status=status.HTTP_400_BAD_REQUEST)
+        if user is not None and not getattr(getattr(user, "profile", None), "email_verified", False):
+            # Bu email boshqa hisobda qo'lda yozilgan, egasi tasdiqlanmagan. Unga bog'lanmaymiz — aks holda
+            # begona odam profiliga birovning Gmail'ini yozib, uning Google orqali kirishini o'z hisobiga
+            # tushirishi mumkin edi. Google egalikni tasdiqladi: email o'sha hisobdan olinadi, yangi hisob ochiladi.
+            User.objects.filter(pk=user.pk).update(email="")
+            user = None
         created = False
         if user is None:
             user, created = self._create(email, info), True
-        if user.is_staff:
-            return Response({"detail": _msg(request, "staff")}, status=status.HTTP_400_BAD_REQUEST)
         if not user.is_active:
             return Response({"detail": _msg(request, "inactive")}, status=status.HTTP_400_BAD_REQUEST)
         # Ism-familiya bo'sh bo'lsa Google'dagisini olamiz
@@ -91,6 +100,8 @@ class GoogleLoginView(APIView):
             user.save(update_fields=changed)
 
         refresh = RefreshToken.for_user(user)
+        record(request, AuditLog.Action.LOGIN, user=user, section="sayt",
+               details="Google" + (" — yangi hisob ochildi" if created else ""))
         return Response({"access": str(refresh.access_token), "refresh": str(refresh), "created": created})
 
     @transaction.atomic
@@ -102,5 +113,5 @@ class GoogleLoginView(APIView):
         )
         user.set_unusable_password()  # parol yo'q — xohlasa profilda o'rnatadi
         user.save(update_fields=["password"])
-        CustomerProfile.objects.create(user=user)
+        CustomerProfile.objects.create(user=user, email_verified=True)
         return user

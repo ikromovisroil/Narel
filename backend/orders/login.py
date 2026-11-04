@@ -13,10 +13,15 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenBlacklistView, TokenObtainPairView
+
+from audit.log import record
+from audit.models import AuditLog
 
 from catalog.i18n import get_lang, localized
 
 from .models import CustomerProfile, PhoneCode, StoreSettings
+from .security import client_ip, login_locked
 from .serializers import normalize_phone
 from .sms import SmsError, send_sms, test_mode
 
@@ -42,6 +47,10 @@ MESSAGES = {
         "ru": "Сотрудники входят по логину и паролю.",
     },
     "inactive": {"uz": "Bu hisob bloklangan.", "ru": "Этот аккаунт заблокирован."},
+    "locked": {
+        "uz": "Juda ko'p noto'g'ri urinish. 15 daqiqadan keyin qayta urinib ko'ring.",
+        "ru": "Слишком много неудачных попыток. Попробуйте через 15 минут.",
+    },
     "phone_taken": {
         "uz": "Bu raqam boshqa hisobga bog'langan.",
         "ru": "Этот номер привязан к другому аккаунту.",
@@ -67,8 +76,39 @@ def code_hash(phone, code):
     return hmac.new(settings.SECRET_KEY.encode(), f"{phone}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
-def client_ip(request):
-    return request.META.get("REMOTE_ADDR")
+class StaffLoginView(TokenObtainPairView):
+    """Xodim kirishi (login/email/telefon + parol). Daqiqalik limit va ko'p xatodan keyin 15 daqiqalik blok."""
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "password"
+
+    def post(self, request, *args, **kwargs):
+        username = str(request.data.get("username") or "")
+        if username and login_locked(request, username):
+            record(request, AuditLog.Action.LOGIN_FAILED, details=f"login: {username[:150]} — bloklangan", section="admin-panel")
+            return Response({"detail": msg(request, "locked")}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            from .auth import LoginEmailPhoneBackend
+            record(request, AuditLog.Action.LOGIN, user=LoginEmailPhoneBackend.find_user(username.strip()),
+                   section="admin-panel", details="login va parol")
+        # Noto'g'ri parol — user_login_failed signali orqali yoziladi
+        return response
+
+
+class LogoutView(TokenBlacklistView):
+    """Chiqish: refresh token bekor qilinadi va jurnalga yoziladi."""
+
+    def post(self, request, *args, **kwargs):
+        user = None
+        try:
+            user = User.objects.filter(pk=RefreshToken(request.data.get("refresh"))["user_id"]).first()
+        except Exception:  # noqa: BLE001 — yaroqsiz token: shunchaki bekor qilishga urinamiz
+            pass
+        response = super().post(request, *args, **kwargs)
+        if user and response.status_code == 200:
+            record(request, AuditLog.Action.LOGOUT, user=user, section="admin-panel" if user.is_staff else "sayt")
+        return response
 
 
 def login_response(request, user, created):
@@ -78,6 +118,8 @@ def login_response(request, user, created):
     if not user.is_active:
         return bad(request, "inactive")
     refresh = RefreshToken.for_user(user)
+    record(request, AuditLog.Action.LOGIN, user=user, section="sayt",
+           details="SMS kod" + (" — yangi hisob ochildi" if created else ""))
     return Response({"access": str(refresh.access_token), "refresh": str(refresh), "created": created})
 
 
@@ -130,8 +172,8 @@ class SendCodeView(APIView):
         PhoneCode.objects.filter(phone=phone, used=False).update(used=True)
         PhoneCode.objects.create(phone=phone, code_hash=code_hash(phone, code), ip=ip)
 
-        data = {"phone": phone, "expires_in": CODE_TTL, "resend_in": RESEND_AFTER,
-                "is_new": not CustomerProfile.objects.filter(phone=phone).exists()}
+        # Raqam ro'yxatdan o'tganmi — aytilmaydi (begona odam bilib olmasin); verify javobida "created" bor
+        data = {"phone": phone, "expires_in": CODE_TTL, "resend_in": RESEND_AFTER}
         if test_mode():
             data["debug_code"] = code  # faqat DEBUG va SMS xizmati sozlanmaganda
         return Response(data)
@@ -174,6 +216,7 @@ class VerifyCodeView(APIView):
         with transaction.atomic():
             error = consume_code(request, phone, code)
             if error:
+                record(request, AuditLog.Action.LOGIN_FAILED, details=f"{phone} — noto'g'ri yoki eskirgan kod", section="sayt")
                 return error
             profile = CustomerProfile.objects.select_related("user").filter(phone=phone).first()
             if profile:

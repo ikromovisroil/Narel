@@ -275,11 +275,13 @@ class IntegrationSettingsAdmin(admin.ModelAdmin):
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         if db_field.name == "eskiz_password":
-            from django import forms as f
-            kwargs["widget"] = f.PasswordInput(render_value=True)
+            # Parol sahifaga chiqmaydi; bo'sh qoldirilsa eskisi saqlanadi
+            kwargs["widget"] = forms.PasswordInput(render_value=False, attrs={"placeholder": "o'zgartirmaslik uchun bo'sh qoldiring"})
         return super().formfield_for_dbfield(db_field, request, **kwargs)
 
     def save_model(self, request, obj, form, change):
+        if change and not form.cleaned_data.get("eskiz_password"):
+            obj.eskiz_password = IntegrationSettings.objects.get(pk=obj.pk).eskiz_password
         super().save_model(request, obj, form, change)
         from .sms import forget_token
         forget_token()

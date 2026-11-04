@@ -154,6 +154,8 @@ class CustomerProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     phone = models.CharField("Telefon", max_length=20, blank=True)
     address = models.CharField("Yetkazish manzili", max_length=255, blank=True)
+    # Email egasi tasdiqlanganmi (Google orqali kirganda). Profilda qo'lda yozilgan email tasdiqlanmagan.
+    email_verified = models.BooleanField("Email tasdiqlangan", default=False)
 
     class Meta:
         verbose_name = "Mijoz profili"

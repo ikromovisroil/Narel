@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,9 +13,46 @@ def env_list(name, default=""):
     return [x.strip() for x in os.getenv(name, default).split(",") if x.strip()]
 
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key")
+def env_bool(name, default):
+    value = os.getenv(name)
+    return default if value is None or value.strip() == "" else value.strip().lower() in ("1", "true", "yes", "on")
+
+
 DEBUG = os.getenv("DEBUG", "False") == "True"
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY and DEBUG:
+    SECRET_KEY = "dev-insecure-key-faqat-lokal-uchun"
+# Serverda kuchsiz yoki yo'q kalit bilan ishga tushmasin (u tokenlar va SMS kod xeshlarini himoya qiladi)
+if not DEBUG and (len(SECRET_KEY) < 40 or "insecure" in SECRET_KEY):
+    raise ImproperlyConfigured(
+        "SECRET_KEY kamida 40 belgili tasodifiy qiymat bo'lishi kerak. Yaratish: "
+        "python -c \"from django.core.management.utils import get_random_secret_key as g; print(g())\""
+    )
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
+
+# ---------- Server xavfsizligi ----------
+# Server proksi (nginx) ortida bo'lsa 1. Shunda mijozning haqiqiy IP manzili X-Forwarded-For dan olinadi.
+# 0 — sarlavha e'tiborga olinmaydi (soxtalashtirib limitlarni aylanib o'tib bo'lmaydi).
+NUM_PROXIES = int(os.getenv("NUM_PROXIES", "0") or 0)
+# HTTPS: serverda (DEBUG=False) sukut bo'yicha yoqiq
+HTTPS = env_bool("HTTPS", not DEBUG)
+if HTTPS:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000") or 0)
+    if NUM_PROXIES:
+        # nginx HTTPS'ni o'zi qabul qiladi va Django'ga "X-Forwarded-Proto: https" yuboradi
+        SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+SESSION_COOKIE_HTTPONLY = True
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
+# Harakatlar jurnali necha kun saqlanadi (python manage.py prune_audit)
+AUDIT_KEEP_DAYS = int(os.getenv("AUDIT_KEEP_DAYS", "365") or 365)
+# Django admin manzili (standart "admin/" o'rniga boshqasini qo'yish tavsiya etiladi)
+DJANGO_ADMIN_URL = (os.getenv("DJANGO_ADMIN_URL", "admin").strip().strip("/") or "admin") + "/"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -24,6 +62,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_filters",
     "drf_spectacular",
@@ -33,6 +72,7 @@ INSTALLED_APPS = [
     "payments",
     "staff",
     "comments",
+    "audit",
 ]
 
 MIDDLEWARE = [
@@ -43,6 +83,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "audit.middleware.AuditMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -115,6 +156,8 @@ REST_FRAMEWORK = {
     # Izoh yozish: bir foydalanuvchi daqiqasiga 10 tagacha
     "DEFAULT_THROTTLE_RATES": {"comments": "10/min", "password": "10/min", "otp": "5/min", "otp_verify": "10/min"},
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Limitlar uchun IP: proksi soni (yuqoridagi NUM_PROXIES)
+    "NUM_PROXIES": NUM_PROXIES,
 }
 
 # Swagger (/api/docs/). DEBUG'da hamma uchun ochiq, serverda — faqat /admin/ ga kirgan xodim
@@ -155,7 +198,17 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     # Xodimlar jadvalidagi "Oxirgi kirish" ustuni uchun
     "UPDATE_LAST_LOGIN": True,
+    # Har yangilashda yangi refresh token; eskisi va chiqishdagisi bekor qilinadi (o'g'irlangan token ishlamaydi)
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
+
+# Kesh: limitlar, SMS token va kirish bloklari barcha worker'lar uchun umumiy bo'lishi kerak.
+# REDIS_URL bo'lsa Redis (pip install redis), aks holda ma'lumotlar bazasi (jadval migratsiyada yaratiladi).
+if os.getenv("REDIS_URL"):
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": os.getenv("REDIS_URL")}}
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "narel_cache"}}
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
 

@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 
+from .security import login_failed, login_locked, login_succeeded
 from .serializers import normalize_phone
 
 User = get_user_model()
@@ -15,10 +16,14 @@ class LoginEmailPhoneBackend(ModelBackend):
             username = kwargs.get(User.USERNAME_FIELD)
         if not username or not password:
             return None
+        if login_locked(request, username):
+            return None  # juda ko'p noto'g'ri urinish — to'g'ri parol ham vaqtincha qabul qilinmaydi
         user = self.find_user(username.strip())
         if user and user.is_staff and user.check_password(password) and self.user_can_authenticate(user):
+            login_succeeded(request, username)
             return user
         User().set_password(password)  # vaqt bo'yicha farq bilinmasin
+        login_failed(request, username)
         return None
 
     @staticmethod

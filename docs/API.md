@@ -107,10 +107,10 @@ Mijoz faqat **telefon + SMS kod** yoki **Google** orqali kiradi. Parol yo'q.
 
 Javob:
 ```json
-{ "phone": "+998 90 123 45 67", "expires_in": 120, "resend_in": 60, "is_new": true }
+{ "phone": "+998 90 123 45 67", "expires_in": 120, "resend_in": 60 }
 ```
 
-- `is_new: true` — bu raqam bilan hali hisob yo'q (kiritilgach yaratiladi).
+- Raqam ro'yxatdan o'tganmi — xavfsizlik uchun aytilmaydi. Yangi hisob ochilgani kodni tasdiqlash javobida (`created`) bilinadi.
 - Kod 120 soniya amal qiladi, qayta yuborish 60 soniyadan keyin.
 - Sinov rejimida (DEBUG va Eskiz sozlanmagan) javobda `debug_code` ham keladi.
 
@@ -140,7 +140,7 @@ Javob: `{ "access", "refresh", "created" }`. Email bo'yicha mavjud hisobga bog'l
 ### `POST /api/auth/refresh/` — tokenni yangilash
 
 ```json
-{ "refresh": "…" }  →  { "access": "…" }
+{ "refresh": "…" }  →  { "access": "…", "refresh": "…" }   // yangi refresh'ni saqlang, eskisi bekor bo'ladi
 ```
 
 ---
@@ -428,11 +428,45 @@ Har bir SMS tarixga yoziladi (kod "******" bilan yashiriladi): holati, Eskiz ID,
 Balans kam qolsa yoki Eskiz'ga ulanib bo'lmasa — admin bosh sahifasida ogohlantirish.
 Admin panelda bo'sh qoldirilgan maydon o'rniga `.env` dagi qiymat ishlatiladi.
 
-## 11. Sozlamalar (`backend/.env`)
+## 11. Xavfsizlik
+
+| Himoya | Qanday |
+|---|---|
+| Xodim parolini tanlab buzish | 15 daqiqada bitta login uchun 5 ta (bitta IP'dan 20 ta) noto'g'ri urinishdan keyin 15 daqiqa blok (`429`). Django admin'da ham. Daqiqasiga 10 ta so'rov |
+| Tokenlar | `access` 1 soat, `refresh` 7 kun. Har yangilashda **yangi refresh** qaytadi va eskisi bekor bo'ladi. `POST auth/logout/ {"refresh"}` — chiqishda bekor qilish |
+| SMS kod | Bazada xeshi; 2 daqiqa, 5 urinish, raqamga kuniga 10, IP'dan kuniga 30. Raqam ro'yxatdan o'tganmi — aytilmaydi |
+| Google | Faqat egasi tasdiqlangan emailga bog'lanadi (Google orqali ochilgan). Profilda qo'lda yozilgan emailga bog'lanmaydi |
+| IP | `NUM_PROXIES` — nginx ortida 1. Aks holda `X-Forwarded-For` e'tiborga olinmaydi (soxtalashtirib bo'lmaydi) |
+| HTTPS | Serverda majburiy: yo'naltirish, HSTS, xavfsiz cookie, `X-Frame-Options: DENY` |
+| Maxfiy kalitlar | API orqali qaytmaydi; Django admin'da ham `********` |
+
+### Harakatlar jurnali
+
+Django admin → **Xavfsizlik → Harakatlar jurnali** (faqat superuser; API va React admin'da yo'q, o'zgartirib/o'chirib bo'lmaydi):
+
+- kim kirdi / chiqdi / kira olmadi (xodim — login-parol, mijoz — SMS yoki Google), qaysi IP va qurilmadan;
+- kim nima qildi: React admin va Django admin'dagi har bir qo'shish, o'zgartirish, o'chirish
+  (bo'lim, yozuv ID, yuborilgan ma'lumot, natija kodi); mijozning buyurtma, izoh, profil o'zgarishlari;
+- parol, kod, token va kalitlar yozilmaydi (`***`). Ko'rish (GET), savat va sevimlilar yozilmaydi.
+
+Eski yozuvlarni tozalash (cron bilan kuniga bir marta): `python manage.py prune_audit` (`AUDIT_KEEP_DAYS`, sukut 365 kun).
+
+### Serverga chiqarishdan oldin
+
+1. `SECRET_KEY` — yangi tasodifiy kalit (bo'lmasa sayt ishga tushmaydi), `DEBUG=False`, `ALLOWED_HOSTS` — domen.
+2. nginx orqasida: `NUM_PROXIES=1` va nginx'da `proxy_set_header X-Forwarded-For $remote_addr; proxy_set_header X-Forwarded-Proto $scheme;`.
+3. HTTPS sertifikati (masalan Let's Encrypt). `CSRF_TRUSTED_ORIGINS=https://domen`.
+4. `DJANGO_ADMIN_URL` — o'zgacha nom. Superuser paroli kuchli bo'lsin.
+5. `python manage.py migrate` va `python manage.py check --deploy`.
+6. Bir nechta worker bo'lsa — `REDIS_URL`.
+
+## 12. Sozlamalar (`backend/.env`)
 
 | O'zgaruvchi | Vazifasi |
 |---|---|
 | `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS` | Django asosiy sozlamalari |
+| `NUM_PROXIES`, `HTTPS`, `SECURE_HSTS_SECONDS`, `CSRF_TRUSTED_ORIGINS`, `DJANGO_ADMIN_URL` | Server xavfsizligi (11-bo'lim) |
+| `REDIS_URL`, `AUDIT_KEEP_DAYS` | Kesh va harakatlar jurnali |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT` | Ma'lumotlar bazasi |
 | `CORS_ALLOWED_ORIGINS` | Sayt va admin manzillari |
 | `GOOGLE_CLIENT_ID` | Google orqali kirish (zaxira — odatda admin panelda kiritiladi) |

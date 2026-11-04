@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { api, tokens } from './api'
+import { api, revokeTokens, tokens } from './api'
 import { getLang, setLang, t } from './i18n'
 
 const StoreContext = createContext(null)
@@ -52,7 +52,7 @@ export function StoreProvider({ children }) {
   }, [])
   const googleLogin = useCallback(credential => tokenLogin('/auth/google/', { credential }), [tokenLogin])
   // Chiqishda savat va sevimlilar shu qurilmadan tozalanadi (serverda saqlanib qoladi)
-  const logout = () => { tokens.clear(); setUser(null); setCart([]); setFavorites([]) }
+  const logout = () => { revokeTokens(); setUser(null); setCart([]); setFavorites([]) }
 
   const addToCart = (p, qty = 1) => setCart(items => {
     const found = items.find(i => i.id === p.id)

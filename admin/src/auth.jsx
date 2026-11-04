@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { api, tokens } from './api'
+import { api, revokeTokens, tokens } from './api'
 
 const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
   }
 
   const logout = () => {
-    tokens.clear()
+    revokeTokens()
     setUser(null)
   }
 

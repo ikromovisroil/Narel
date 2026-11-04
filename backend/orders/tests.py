@@ -334,7 +334,9 @@ class GoogleLoginTests(APITestCase):
         self.assertEqual(self.client.get("/api/auth/me/").json()["email"], "ali@gmail.com")
 
     def test_links_existing_customer_and_blocks_staff(self):
-        User.objects.create_user("ali", email="ali@gmail.com", password="x")
+        ali = User.objects.create_user("ali", email="ali@gmail.com", password="x")
+        # Faqat egasi tasdiqlangan emailga bog'lanadi (audit.tests.GoogleEmailTakeoverTests)
+        CustomerProfile.objects.create(user=ali, email_verified=True)
         r = self.google(self.INFO)
         self.assertEqual(r.status_code, 200)
         self.assertFalse(r.data["created"])
@@ -370,7 +372,7 @@ class PhoneCodeLoginTests(APITestCase):
         self.assertIn("phone", self.send(phone="123").data)
         r = self.send()
         self.assertEqual(r.status_code, 200, r.data)
-        self.assertTrue(r.data["is_new"])
+        self.assertNotIn("is_new", r.data)
         code = r.data["debug_code"]
         self.assertEqual(len(code), 6)
         r = self.verify(code)
@@ -385,7 +387,7 @@ class PhoneCodeLoginTests(APITestCase):
         user = User.objects.create_user("ali", password="x")
         CustomerProfile.objects.create(user=user, phone="+998 90 123 45 67")
         r = self.send()
-        self.assertFalse(r.data["is_new"])
+        self.assertNotIn("is_new", r.data)
         self.assertEqual(self.send().status_code, 429)  # 60 soniya o'tmagan
         r = self.verify(r.data["debug_code"])
         self.assertFalse(r.data["created"])

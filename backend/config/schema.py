@@ -52,7 +52,7 @@ extend_schema_view(post=extend_schema(
     request=SendCodeSerializer,
     responses={200: inline_serializer("CodeSent", {
         "phone": serializers.CharField(), "expires_in": serializers.IntegerField(),
-        "resend_in": serializers.IntegerField(), "is_new": serializers.BooleanField(),
+        "resend_in": serializers.IntegerField(),
         "debug_code": serializers.CharField(required=False),
     }), **ERRORS, 503: OpenApiResponse(Detail, description="SMS xizmati ishlamayapti")},
 ))(SendCodeView)

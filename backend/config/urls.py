@@ -6,7 +6,7 @@ from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework.authentication import SessionAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView
 
 from catalog.views import BannerViewSet, BrandViewSet, CategoryViewSet, ProductViewSet
 from orders.views import MeView, OrderViewSet
@@ -16,7 +16,7 @@ from orders.account import (
 from payments.views import PublicPaymentMethodViewSet
 from comments.views import MyCommentView, ProductCommentsView
 from orders.google import GoogleLoginView
-from orders.login import ChangePhoneView, OfferView, SendCodeView, VerifyCodeView
+from orders.login import ChangePhoneView, LogoutView, OfferView, SendCodeView, StaffLoginView, VerifyCodeView
 from orders.store import PublicStoreSettingsView
 from config.schema import DocsAccess  # Swagger izohlari ham shu modulda
 
@@ -48,7 +48,8 @@ api_patterns = [
     path("cart/sync/", CartSyncView.as_view()),
     path("cart/<int:product_id>/", CartItemDeleteView.as_view()),
     path("", include(router.urls)),
-    path("auth/login/", TokenObtainPairView.as_view()),
+    path("auth/login/", StaffLoginView.as_view()),
+    path("auth/logout/", LogoutView.as_view()),
     path("auth/refresh/", TokenRefreshView.as_view()),
     path("auth/me/", MeView.as_view()),
     path("auth/phone/", ChangePhoneView.as_view()),
@@ -59,7 +60,7 @@ api_patterns = [
 ]
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path(settings.DJANGO_ADMIN_URL, admin.site.urls),
     path("api/v1/", include(api_patterns)),
     path("api/", include(api_patterns)),
 ]

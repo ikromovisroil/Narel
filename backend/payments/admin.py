@@ -4,10 +4,25 @@ from django.contrib import admin
 from .models import PROVIDERS, PaymentMethod
 
 
+MASK = "********"
+
+
+def secret_keys(code):
+    return {f["key"] for f in PROVIDERS.get(code, {}).get("fields", []) if f.get("secret")}
+
+
 class PaymentMethodForm(forms.ModelForm):
+    """Maxfiy kalitlar sahifada "********" bo'lib ko'rinadi; o'zgartirilmasa eski qiymat saqlanadi."""
+
     class Meta:
         model = PaymentMethod
         fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk and isinstance(self.instance.config, dict):
+            secrets = secret_keys(self.instance.code)
+            self.initial["config"] = {k: (MASK if k in secrets and v else v) for k, v in self.instance.config.items()}
 
     def clean(self):
         data = super().clean()
@@ -16,6 +31,11 @@ class PaymentMethodForm(forms.ModelForm):
         if not isinstance(config, dict):
             self.add_error("config", "Sozlamalar {kalit: qiymat} ko'rinishida bo'lishi kerak.")
             return data
+        old = self.instance.config if self.instance.pk and isinstance(self.instance.config, dict) else {}
+        for key in secret_keys(code):
+            if config.get(key) == MASK:
+                config[key] = old.get(key, "")
+        data["config"] = config
         if data.get("is_active"):
             fields = PROVIDERS.get(code, {}).get("fields", [])
             missing = [f["label"] for f in fields if f.get("required") and not str(config.get(f["key"], "")).strip()]

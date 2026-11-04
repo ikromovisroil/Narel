@@ -13,16 +13,40 @@ const tokens = {
 }
 export { tokens }
 
-async function refreshAccess() {
-  if (!tokens.refresh) return false
-  const r = await fetch('/api/auth/refresh/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh: tokens.refresh }),
-  })
-  if (!r.ok) return false
-  tokens.set((await r.json()).access)
-  return true
+// Refresh token har safar yangilanadi (eskisi serverda bekor qilinadi). Bir vaqtda bir nechta so'rov 401 olsa,
+// yangilash bitta bo'ladi — aks holda ikkinchisi bekor qilingan token bilan urinib, foydalanuvchini chiqarib yuborardi.
+let refreshing = null
+function refreshAccess() {
+  if (!tokens.refresh) return Promise.resolve(false)
+  refreshing ??= (async () => {
+    try {
+      const r = await fetch('/api/auth/refresh/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: tokens.refresh }),
+      })
+      if (!r.ok) return false
+      const d = await r.json()
+      tokens.set(d.access, d.refresh)
+      return true
+    } catch {
+      return false
+    } finally {
+      refreshing = null
+    }
+  })()
+  return refreshing
+}
+
+// Chiqish: refresh token serverda bekor qilinadi (o'g'irlangan bo'lsa ham ishlamaydi)
+export function revokeTokens() {
+  const refresh = tokens.refresh
+  tokens.clear()
+  if (refresh) {
+    fetch('/api/auth/logout/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh }),
+    }).catch(() => {})
+  }
 }
 
 function query(params) {

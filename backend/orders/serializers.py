@@ -142,9 +142,15 @@ class UserSerializer(AccountFieldsMixin, serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         address = validated_data.pop("address", None)
+        email_changed = "email" in validated_data and validated_data["email"].strip().lower() != (instance.email or "").lower()
         user = super().update(instance, validated_data)
+        defaults = {}
         if address is not None:
-            user.profile, _ = CustomerProfile.objects.update_or_create(user=user, defaults={"address": address.strip()})
+            defaults["address"] = address.strip()
+        if email_changed:
+            defaults["email_verified"] = False  # qo'lda yozilgan email — egasi tasdiqlanmagan
+        if defaults:
+            user.profile, _ = CustomerProfile.objects.update_or_create(user=user, defaults=defaults)
         return user
 
     def get_permissions(self, obj):
