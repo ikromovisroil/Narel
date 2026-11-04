@@ -22,7 +22,7 @@ class IntegrationSettingsSerializer(serializers.ModelSerializer):
         model = IntegrationSettings
         fields = [
             "sms_enabled", "eskiz_email", "eskiz_password", "has_password", "eskiz_from", "sms_low_balance",
-            "sms_otp_domain", "google_client_id", "updated_at",
+            "sms_otp_domain", "google_client_id", "google_ios_client_id", "google_android_client_id", "updated_at",
         ]
         read_only_fields = ["updated_at"]
 
@@ -38,11 +38,21 @@ class IntegrationSettingsSerializer(serializers.ModelSerializer):
     def validate_eskiz_from(self, value):
         return value.strip()
 
-    def validate_google_client_id(self, value):
+    @staticmethod
+    def _client_id(value):
         value = value.strip()
         if value and not value.endswith(".apps.googleusercontent.com"):
             raise serializers.ValidationError("Client ID \".apps.googleusercontent.com\" bilan tugaydi.")
         return value
+
+    def validate_google_client_id(self, value):
+        return self._client_id(value)
+
+    def validate_google_ios_client_id(self, value):
+        return self._client_id(value)
+
+    def validate_google_android_client_id(self, value):
+        return self._client_id(value)
 
     def update(self, instance, validated_data):
         password = validated_data.pop("eskiz_password", "")

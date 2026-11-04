@@ -230,7 +230,9 @@ class IntegrationSettings(models.Model):
     eskiz_from = models.CharField("Jo'natuvchi nomi", max_length=30, blank=True)
     sms_low_balance = models.PositiveIntegerField("Balans ogohlantirishi chegarasi", null=True, blank=True)
     sms_otp_domain = models.CharField("Kodni avtomatik to'ldirish domeni", max_length=100, blank=True)
-    google_client_id = models.CharField("Google Client ID", max_length=255, blank=True)
+    google_client_id = models.CharField("Google Client ID (sayt)", max_length=255, blank=True)
+    google_ios_client_id = models.CharField("Google Client ID (iOS ilova)", max_length=255, blank=True)
+    google_android_client_id = models.CharField("Google Client ID (Android ilova)", max_length=255, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -248,3 +250,32 @@ class IntegrationSettings(models.Model):
     def load(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+
+class Favorite(models.Model):
+    """Mijozning sevimli mahsuloti (sayt va mobil ilovada bir xil)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorites")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Sevimli"
+        verbose_name_plural = "Sevimlilar"
+        ordering = ["-created_at", "-id"]
+        constraints = [models.UniqueConstraint(fields=["user", "product"], name="unique_favorite")]
+
+
+class CartItem(models.Model):
+    """Savatdagi mahsulot (sayt va mobil ilovada bir xil)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="cart_items")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="+")
+    quantity = models.PositiveIntegerField("Soni", default=1)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Savatdagi mahsulot"
+        verbose_name_plural = "Savatlar"
+        ordering = ["id"]
+        constraints = [models.UniqueConstraint(fields=["user", "product"], name="unique_cart_item")]

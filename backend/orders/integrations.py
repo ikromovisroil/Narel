@@ -40,7 +40,15 @@ def sms_config():
 
 
 def google_client_id():
+    """Sayt uchun Client ID (saytdagi tugma shu bilan ishlaydi)."""
     return (IntegrationSettings.load().google_client_id or settings.GOOGLE_CLIENT_ID).strip()
+
+
+def google_client_ids():
+    """Qabul qilinadigan barcha Client ID'lar: sayt, iOS va Android ilovalar."""
+    s = IntegrationSettings.load()
+    ids = [s.google_client_id or settings.GOOGLE_CLIENT_ID, s.google_ios_client_id, s.google_android_client_id]
+    return {i.strip() for i in ids if i and i.strip()}
 
 
 SMS_TEXTS = {
@@ -96,6 +104,8 @@ GUIDES = {
             "\"APIs & Services\" → \"Credentials\" → \"Create credentials\" → \"OAuth client ID\", turi \"Web application\".",
             "\"Authorized JavaScript origins\" ga sayt manzilini qo'shing (masalan, https://narel.uz).",
             "Yaratilgan \"Client ID\" ni (…apps.googleusercontent.com bilan tugaydi) shu yerga kiriting. Client secret kerak emas.",
+            "Mobil ilova bo'lsa: Credentials'da \"iOS\" va \"Android\" turidagi Client ID'lar ham yarating "
+            "(Android uchun ilova paketi nomi va SHA-1 kaliti kerak — ularni mobil dasturchi beradi) va pastdagi maydonlarga kiriting.",
         ],
         "contacts": {
             "links": [

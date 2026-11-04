@@ -217,7 +217,14 @@ function GoogleDrawer({ open, data, onClose, onSaved }) {
   const [save, saving] = useSave(form, onSaved, onClose)
 
   useEffect(() => {
-    if (open) { form.resetFields(); form.setFieldsValue({ google_client_id: data.google_client_id }) }
+    if (open) {
+      form.resetFields()
+      form.setFieldsValue({
+        google_client_id: data.google_client_id,
+        google_ios_client_id: data.google_ios_client_id,
+        google_android_client_id: data.google_android_client_id,
+      })
+    }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const guide = data.guides.google
@@ -233,10 +240,26 @@ function GoogleDrawer({ open, data, onClose, onSaved }) {
                title="Hozir serverdagi .env fayldagi Client ID ishlatilmoqda. Shu yerga kiritsangiz, u ustun bo'ladi." />
       )}
       <Form form={form} layout="vertical" onFinish={save} requiredMark={false} disabled={!canEdit}>
-        <Form.Item name="google_client_id" label="Client ID"
-                   extra="Bo'sh qoldirilsa saytda &quot;Google orqali kirish&quot; tugmasi ko'rinmaydi">
+        <Form.Item name="google_client_id" label="Client ID (sayt)"
+                   extra="Turi &quot;Web application&quot;. Bo'sh qoldirilsa saytda &quot;Google orqali kirish&quot; tugmasi ko'rinmaydi">
           <Input placeholder="1234567890-abc.apps.googleusercontent.com" />
         </Form.Item>
+        <Typography.Title level={5}>Mobil ilovalar</Typography.Title>
+        <Typography.Paragraph type="secondary" style={{ fontSize: 13 }}>
+          Faqat iOS yoki Android ilova bo'lsa kerak. Ilova o'zining Client ID'si bilan kiradi — shu yerga qo'shilmasa, ilovadan Google orqali kirish rad etiladi.
+        </Typography.Paragraph>
+        <Row gutter={12}>
+          <Col xs={24} sm={12}>
+            <Form.Item name="google_ios_client_id" label="iOS Client ID" extra="Turi &quot;iOS&quot;">
+              <Input placeholder="…apps.googleusercontent.com" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item name="google_android_client_id" label="Android Client ID" extra="Turi &quot;Android&quot; (paket nomi va SHA-1 bilan)">
+              <Input placeholder="…apps.googleusercontent.com" />
+            </Form.Item>
+          </Col>
+        </Row>
       </Form>
     </Drawer>
   )

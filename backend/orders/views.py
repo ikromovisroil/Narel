@@ -3,7 +3,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from .models import Order
+from .models import CartItem, Order
 from .serializers import OrderSerializer, UserSerializer
 
 
@@ -35,4 +35,5 @@ class OrderViewSet(
         return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        order = serializer.save(user=self.request.user)
+        CartItem.objects.filter(user=self.request.user, product_id__in=order.items.values("product_id")).delete()

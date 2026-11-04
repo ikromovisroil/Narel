@@ -717,3 +717,88 @@ class IntegrationSettingsTests(APITestCase):
         cid = "123-abc.apps.googleusercontent.com"
         self.client.patch(self.URL, {"google_client_id": cid}, format="json")
         self.assertEqual(self.client.get("/api/store-settings/").data["google_client_id"], cid)
+
+
+class MobileApiTests(APITestCase):
+    """Mobil ilova uchun: /api/v1/, serverdagi sevimlilar va savat, ilovalarning Google Client ID'lari."""
+
+    def setUp(self):
+        cat = Category.objects.create(name="C", slug="c")
+        self.p1 = Product.objects.create(category=cat, name="Choynak", slug="choynak", price=100, stock=5)
+        self.p2 = Product.objects.create(category=cat, name="Dazmol", slug="dazmol", price=300, stock=2)
+        self.hidden = Product.objects.create(category=cat, name="Eski", slug="eski", price=50, stock=9, is_active=False)
+        self.user = User.objects.create_user("998901112233")
+        self.client.force_authenticate(self.user)
+
+    def test_v1_mirrors_api(self):
+        self.assertEqual(self.client.get("/api/v1/products/").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/auth/me/").json()["id"], self.user.id)
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get("/api/v1/cart/").status_code, 401)
+
+    def test_favorites(self):
+        r = self.client.post("/api/v1/favorites/", {"product": self.p1.id}, format="json")
+        self.assertEqual([p["slug"] for p in r.json()], ["choynak"])
+        self.client.post("/api/v1/favorites/", {"product": self.p1.id}, format="json")  # takror — bitta bo'lib qoladi
+        self.assertEqual(self.client.post("/api/v1/favorites/", {"product": self.hidden.id}, format="json").status_code, 400)
+        r = self.client.post("/api/v1/favorites/sync/", {"products": [self.p2.id, self.hidden.id, self.p1.id]}, format="json")
+        self.assertEqual(sorted(p["slug"] for p in r.json()), ["choynak", "dazmol"])
+        self.assertEqual(self.client.delete(f"/api/v1/favorites/{self.p1.id}/").status_code, 204)
+        self.assertEqual([p["slug"] for p in self.client.get("/api/v1/favorites/").json()], ["dazmol"])
+
+    def test_cart_add_put_sync_and_stock_limit(self):
+        r = self.client.post("/api/v1/cart/add/", {"product": self.p1.id, "quantity": 2}, format="json").json()
+        self.assertEqual((r["count"], r["total"]), (1, 200))
+        r = self.client.post("/api/v1/cart/add/", {"product": self.p1.id, "quantity": 10}, format="json").json()
+        self.assertEqual(r["items"][0]["quantity"], 5)  # ombordagidan oshmaydi
+        # Qurilmadagi savat bilan birlashtirish: bir xil mahsulotda kattarog'i, nofaol tashlanadi
+        r = self.client.post("/api/v1/cart/sync/", {"items": [
+            {"product": self.p1.id, "quantity": 1}, {"product": self.p2.id, "quantity": 1},
+            {"product": self.hidden.id, "quantity": 1},
+        ]}, format="json").json()
+        self.assertEqual({i["product"]["slug"]: i["quantity"] for i in r["items"]}, {"choynak": 5, "dazmol": 1})
+        r = self.client.put("/api/v1/cart/", {"items": [{"product": self.p2.id, "quantity": 2}]}, format="json").json()
+        self.assertEqual((r["count"], r["total"]), (1, 600))
+        r = self.client.delete(f"/api/v1/cart/{self.p2.id}/").json()
+        self.assertEqual(r["count"], 0)
+
+    def test_carts_are_private(self):
+        self.client.post("/api/v1/cart/add/", {"product": self.p1.id, "quantity": 1}, format="json")
+        other = User.objects.create_user("998909998877")
+        self.client.force_authenticate(other)
+        self.assertEqual(self.client.get("/api/v1/cart/").json()["count"], 0)
+
+    def test_order_removes_items_from_cart(self):
+        CustomerProfile.objects.create(user=self.user, phone="+998 90 111 22 33", address="Toshkent, Chilonzor 5")
+        self.user.first_name = "Ali"
+        self.user.save()
+        self.client.put("/api/v1/cart/", {"items": [
+            {"product": self.p1.id, "quantity": 1}, {"product": self.p2.id, "quantity": 1}]}, format="json")
+        r = self.client.post("/api/v1/orders/", {"cart": [{"product": self.p1.id, "quantity": 1}],
+                                                 "payment_method": "cash", "delivery_method": "courier"}, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        left = self.client.get("/api/v1/cart/").json()["items"]
+        self.assertEqual([i["product"]["slug"] for i in left], ["dazmol"])
+
+
+@override_settings(GOOGLE_CLIENT_ID="web.apps.googleusercontent.com")
+class GoogleMobileClientTests(APITestCase):
+    INFO = {"aud": "ios.apps.googleusercontent.com", "iss": "https://accounts.google.com",
+            "email": "app@gmail.com", "email_verified": "true"}
+
+    def login(self):
+        with patch("orders.google.urllib.request.urlopen") as op:
+            import io
+            import json
+            op.return_value.__enter__.return_value = io.BytesIO(json.dumps(self.INFO).encode())
+            return self.client.post("/api/v1/auth/google/", {"credential": "x"}, format="json")
+
+    def test_ios_client_rejected_until_added(self):
+        self.assertEqual(self.login().status_code, 400)
+        from .models import IntegrationSettings
+        s = IntegrationSettings.load()
+        s.google_ios_client_id = "ios.apps.googleusercontent.com"
+        s.save()
+        self.assertEqual(self.login().status_code, 200)
+        # Saytga faqat sayt Client ID'si beriladi
+        self.assertEqual(self.client.get("/api/store-settings/").json()["google_client_id"], "web.apps.googleusercontent.com")

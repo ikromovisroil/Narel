@@ -269,7 +269,7 @@ class IntegrationSettingsAdmin(admin.ModelAdmin):
                                        "sms_low_balance", "sms_otp_domain"],
                             "description": "Bo'sh maydon o'rniga .env dagi qiymat ishlatiladi. "
                                            "Yo'riqnoma: admin panel → Sozlamalar → Integratsiyalar."}),
-        ("Google orqali kirish", {"fields": ["google_client_id"]}),
+        ("Google orqali kirish", {"fields": ["google_client_id", "google_ios_client_id", "google_android_client_id"]}),
         (None, {"fields": ["updated_at"]}),
     ]
 

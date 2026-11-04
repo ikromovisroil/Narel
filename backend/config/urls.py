@@ -10,6 +10,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from catalog.views import BannerViewSet, BrandViewSet, CategoryViewSet, ProductViewSet
 from orders.views import MeView, OrderViewSet
+from orders.account import (
+    CartAddView, CartItemDeleteView, CartSyncView, CartView, FavoriteDeleteView, FavoritesSyncView, FavoritesView,
+)
 from payments.views import PublicPaymentMethodViewSet
 from comments.views import MyCommentView, ProductCommentsView
 from orders.google import GoogleLoginView
@@ -29,21 +32,36 @@ admin.site.site_header = "Narel — texnik boshqaruv"
 admin.site.site_title = "Narel admin"
 admin.site.index_title = "Barcha ma'lumotlar"
 
+# API yo'llari. Bir xil ro'yxat ikki joyda: /api/ (sayt va admin panel) va /api/v1/ (mobil ilovalar).
+# Mobil ilova /api/v1/ ni ishlatadi: keyinchalik mos kelmaydigan o'zgarish bo'lsa /api/v2/ ochiladi,
+# eski ilovalar esa v1 da ishlashda davom etadi.
+api_patterns = [
+    path("admin/", include("dashboard.urls")),
+    path("products/<slug:slug>/comments/", ProductCommentsView.as_view()),
+    path("comments/<int:pk>/", MyCommentView.as_view()),
+    path("store-settings/", PublicStoreSettingsView.as_view()),
+    path("favorites/", FavoritesView.as_view()),
+    path("favorites/sync/", FavoritesSyncView.as_view()),
+    path("favorites/<int:product_id>/", FavoriteDeleteView.as_view()),
+    path("cart/", CartView.as_view()),
+    path("cart/add/", CartAddView.as_view()),
+    path("cart/sync/", CartSyncView.as_view()),
+    path("cart/<int:product_id>/", CartItemDeleteView.as_view()),
+    path("", include(router.urls)),
+    path("auth/login/", TokenObtainPairView.as_view()),
+    path("auth/refresh/", TokenRefreshView.as_view()),
+    path("auth/me/", MeView.as_view()),
+    path("auth/phone/", ChangePhoneView.as_view()),
+    path("auth/google/", GoogleLoginView.as_view()),
+    path("auth/code/send/", SendCodeView.as_view()),
+    path("auth/code/verify/", VerifyCodeView.as_view()),
+    path("offer/", OfferView.as_view()),
+]
+
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/admin/", include("dashboard.urls")),
-    path("api/products/<slug:slug>/comments/", ProductCommentsView.as_view()),
-    path("api/comments/<int:pk>/", MyCommentView.as_view()),
-    path("api/store-settings/", PublicStoreSettingsView.as_view()),
-    path("api/", include(router.urls)),
-    path("api/auth/login/", TokenObtainPairView.as_view()),
-    path("api/auth/refresh/", TokenRefreshView.as_view()),
-    path("api/auth/me/", MeView.as_view()),
-    path("api/auth/phone/", ChangePhoneView.as_view()),
-    path("api/auth/google/", GoogleLoginView.as_view()),
-    path("api/auth/code/send/", SendCodeView.as_view()),
-    path("api/auth/code/verify/", VerifyCodeView.as_view()),
-    path("api/offer/", OfferView.as_view()),
+    path("api/v1/", include(api_patterns)),
+    path("api/", include(api_patterns)),
 ]
 
 # Swagger: DEBUG'da ochiq; serverda faqat xodim (avval /admin/ ga kiriladi)

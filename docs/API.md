@@ -3,6 +3,7 @@
 Backend: Django + Django REST Framework. Barcha javoblar JSON.
 
 - Asosiy manzil: `https://<domen>/api/` (lokalda `http://127.0.0.1:8010/api/`)
+- **Mobil ilovalar uchun: `https://<domen>/api/v1/`** — xuddi shu endpoint'lar, versiyalangan (pastda 0-bo'lim)
 - Django admin (texnik panel): `/admin/`
 - Admin panel API'si: `/api/admin/` — quyida `{ADMIN}` deb yozilgan
 - **Swagger** (sinab ko'rish mumkin): `/api/docs/`
@@ -14,6 +15,23 @@ avval `/admin/` ga kiring, keyin `/api/docs/` ni oching. Token bilan sinash: Swa
 
 
 ---
+
+## 0. Mobil ilova (Android, iOS) uchun
+
+**Har doim `/api/v1/` dan foydalaning.** `/api/` — sayt va admin panel uchun, u bilan bir xil, lekin versiyasiz.
+Kelajakda mos kelmaydigan o'zgarish bo'lsa `/api/v2/` ochiladi va eski ilovalar `v1` da ishlashda davom etadi.
+Swagger va OpenAPI sxemasi faqat `/api/v1/` yo'llarini ko'rsatadi — undan Kotlin/Swift klient kodini avtomatik yaratish mumkin
+(masalan, `openapi-generator`).
+
+| Mavzu | Qanday |
+|---|---|
+| Kirish | SMS kod (`auth/code/send/` → `auth/code/verify/`) yoki Google (`auth/google/`). Tokenlarni xavfsiz joyda saqlang (Android Keystore / iOS Keychain) |
+| Google | Ilovaning iOS/Android Client ID'si admin panelda kiritilgan bo'lishi kerak (Sozlamalar → Integratsiyalar → Google). Android'da odatda `serverClientId` sifatida sayt (Web) Client ID beriladi |
+| Sevimlilar va savat | Serverda: `favorites/`, `cart/` (8-bo'lim). Sayt bilan bir xil — mijoz telefonda qo'shganini saytda ko'radi |
+| Buyurtma | `POST orders/` — buyurtma qilingan mahsulotlar savatdan avtomatik chiqadi |
+| SMS kodni avtomatik o'qish | iOS: kod maydoniga `textContentType = .oneTimeCode`. Android (SMS Retriever) uchun SMS matniga ilova kodini qo'shish kerak — backend'da hali yo'q |
+| Rasm manzillari | To'liq URL (`https://…/media/…`) |
+| Til | `Accept-Language: uz` yoki `ru` |
 
 ## 1. Umumiy qoidalar
 
@@ -268,6 +286,32 @@ Javobdagi asosiy maydonlar:
 
 ---
 
+## 6.1. Sevimlilar va savat (kirgan mijoz)
+
+Serverda saqlanadi — sayt va ilovada bir xil. Nofaol (yashirilgan) mahsulotlar ro'yxatlarda chiqmaydi.
+
+| Endpoint | Usul | Ma'nosi |
+|---|---|---|
+| `favorites/` | GET | Sevimlilar (mahsulot kartochkalari, yangisi birinchi) |
+| `favorites/` | POST `{"product": 12}` | Qo'shish; javobda to'liq ro'yxat |
+| `favorites/<product_id>/` | DELETE | Olib tashlash (204) |
+| `favorites/sync/` | POST `{"products": [12, 40]}` | Kirgandan keyin bir marta: qurilmadagilarni qo'shib, to'liq ro'yxatni qaytaradi |
+| `cart/` | GET | Savat |
+| `cart/` | PUT `{"items": [{"product": 12, "quantity": 2}]}` | Savatni to'liq almashtirish (`[]` — tozalash) |
+| `cart/add/` | POST `{"product": 12, "quantity": 1}` | Qo'shish (bor bo'lsa soni oshadi) |
+| `cart/<product_id>/` | DELETE | Olib tashlash |
+| `cart/sync/` | POST `{"items": […]}` | Kirgandan keyin bir marta: qurilmadagi savat bilan birlashtirish (kattaroq son olinadi) |
+
+Savat javobi:
+```json
+{
+  "items": [{ "product": { "id": 12, "name": "…", "price": "8290000", "stock": 5, … }, "quantity": 2, "available": true }],
+  "total": 16580000, "count": 1
+}
+```
+
+Son ombordagidan oshmaydi; `available: false` — omborda so'ralgancha qolmagan.
+
 ## 7. Do'kon ma'lumotlari (hamma uchun)
 
 ### `GET /api/store-settings/`
@@ -378,7 +422,7 @@ Admin panel → **Sozlamalar → Integratsiyalar**. Har biri yo'riqnoma bilan:
 
 - **SMS (Eskiz.uz)**: login, parol, jo'natuvchi nomi, balans ogohlantirishi, Android'da kodni avtomatik to'ldirish domeni.
   "Ulanishni tekshirish" (balans) va "Sinov SMS" tugmalari. Eskiz'da moderatsiyaga beriladigan matnlar nusxa olishga tayyor holda ko'rsatiladi.
-- **Google orqali kirish**: Client ID.
+- **Google orqali kirish**: sayt Client ID'si, mobil ilovalar uchun iOS va Android Client ID'lari.
 
 Har bir SMS tarixga yoziladi (kod "******" bilan yashiriladi): holati, Eskiz ID, xato sababi.
 Balans kam qolsa yoki Eskiz'ga ulanib bo'lmasa — admin bosh sahifasida ogohlantirish.

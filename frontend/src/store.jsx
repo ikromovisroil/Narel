@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { api, tokens } from './api'
 import { getLang, setLang, t } from './i18n'
 
@@ -51,7 +51,8 @@ export function StoreProvider({ children }) {
     return r
   }, [])
   const googleLogin = useCallback(credential => tokenLogin('/auth/google/', { credential }), [tokenLogin])
-  const logout = () => { tokens.clear(); setUser(null) }
+  // Chiqishda savat va sevimlilar shu qurilmadan tozalanadi (serverda saqlanib qoladi)
+  const logout = () => { tokens.clear(); setUser(null); setCart([]); setFavorites([]) }
 
   const addToCart = (p, qty = 1) => setCart(items => {
     const found = items.find(i => i.id === p.id)
@@ -84,9 +85,20 @@ export function StoreProvider({ children }) {
     image: p.image, is_hit: p.is_hit, is_new: p.is_new,
   })
   const isFavorite = id => favorites.some(f => f.id === id)
-  const toggleFavorite = p => setFavorites(list =>
-    list.some(f => f.id === p.id) ? list.filter(f => f.id !== p.id) : [favoriteFields(p), ...list])
-  const clearFavorites = () => setFavorites([])
+  const toggleFavorite = p => {
+    const adding = !favorites.some(f => f.id === p.id)
+    setFavorites(list => (adding ? [favoriteFields(p), ...list.filter(f => f.id !== p.id)] : list.filter(f => f.id !== p.id)))
+    if (synced.current) {
+      const req = adding
+        ? api('/favorites/', { method: 'POST', body: { product: p.id } })
+        : api(`/favorites/${p.id}/`, { method: 'DELETE' })
+      req.catch(() => {})
+    }
+  }
+  const clearFavorites = () => {
+    if (synced.current) favorites.forEach(f => api(`/favorites/${f.id}/`, { method: 'DELETE' }).catch(() => {}))
+    setFavorites([])
+  }
 
   // Narx, ombor va nomni serverdan yangilash (joriy tilda); o'chirilganlari olib tashlanadi
   const refreshFavorites = async () => {
@@ -99,6 +111,44 @@ export function StoreProvider({ children }) {
       return [x.p ? favoriteFields(x.p) : f]
     }))
   }
+
+  // ---------- Server bilan sinxron (kirgan mijoz) ----------
+  // Kirganda: qurilmadagilar serverdagilarga qo'shiladi, keyin har bir o'zgarish serverga yoziladi.
+  // Shunda sayt va mobil ilovada sevimlilar va savat bir xil bo'ladi.
+  const synced = useRef(false)
+  const pushedCart = useRef('')
+  const cartBody = items => items.map(i => ({ product: i.id, quantity: i.qty }))
+  const cartFromServer = res => res.items.map(({ product: p, quantity }) => ({
+    id: p.id, slug: p.slug, name: p.name, price: p.price, image: p.image, stock: p.stock, qty: quantity,
+  }))
+
+  useEffect(() => {
+    if (!user) { synced.current = false; return }
+    let alive = true
+    Promise.all([
+      api('/favorites/sync/', { method: 'POST', body: { products: favorites.map(f => f.id) } }),
+      api('/cart/sync/', { method: 'POST', body: { items: cartBody(cart) } }),
+    ]).then(([favs, serverCart]) => {
+      if (!alive) return
+      setFavorites(favs.map(favoriteFields))
+      const items = cartFromServer(serverCart)
+      pushedCart.current = JSON.stringify(cartBody(items))
+      setCart(items)
+      synced.current = true
+    }).catch(() => {}) // tarmoq xatosi — qurilmadagisi bilan ishlashda davom etadi
+    return () => { alive = false }
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!synced.current) return undefined
+    const body = JSON.stringify(cartBody(cart))
+    if (body === pushedCart.current) return undefined
+    const timer = setTimeout(() => {
+      pushedCart.current = body
+      api('/cart/', { method: 'PUT', body: { items: cartBody(cart) } }).catch(() => { pushedCart.current = '' })
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [cart]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Savat belgisida turli tovarlar soni (dona emas)
   const cartCount = cart.length

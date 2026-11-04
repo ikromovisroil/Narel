@@ -185,18 +185,29 @@ for cls in [adm_s.CategorySerializer, adm_s.BrandSerializer, adm_s.BannerSeriali
 
 # ---------- Bo'limlar (tag) yo'l bo'yicha ----------
 
+def only_v1(endpoints, **kwargs):
+    """Swagger'da faqat /api/v1/ (mobil ilovalar uchun). /api/ — xuddi shu yo'llar, takrorlanmasin."""
+    return [e for e in endpoints if e[0].startswith("/api/v1/")]
+
+
 def tag_by_path(result, generator, request, public):
     rules = [
-        ("/api/admin/", "admin"),
-        ("/api/auth/", "auth"),
-        ("/api/orders/", "orders"),
-        ("/api/comments/", "comments"),
+        ("/admin/", "admin"),
+        ("/auth/", "auth"),
+        ("/orders/", "orders"),
+        ("/favorites/", "account"), ("/cart/", "account"),
         ("/comments/", "comments"),
-        ("/api/products/", "catalog"), ("/api/categories/", "catalog"),
-        ("/api/brands/", "catalog"), ("/api/banners/", "catalog"),
+        ("/products/", "catalog"), ("/categories/", "catalog"),
+        ("/brands/", "catalog"), ("/banners/", "catalog"),
     ]
     for path, ops in result.get("paths", {}).items():
-        tag = next((t for prefix, t in rules if prefix in path), "store")
+        short = path.removeprefix("/api/v1").removeprefix("/api")
+        if short.startswith("/admin/"):
+            tag = "admin"
+        elif "/comments/" in short:
+            tag = "comments"
+        else:
+            tag = next((t for p, t in rules if short.startswith(p)), "store")
         for op in ops.values():
             if isinstance(op, dict):
                 op["tags"] = [tag]
@@ -226,3 +237,45 @@ extend_schema_view(post=extend_schema(
     tags=["admin"], summary="Sinov SMS yuborish",
     request=inline_serializer("SmsTest", {"phone": serializers.CharField()}), responses=OBJ,
 ))(integ.SmsTestView)
+
+
+# ---------- Sevimlilar va savat ----------
+from orders import account as acc  # noqa: E402
+
+CartResponse = inline_serializer("Cart", {
+    "items": inline_serializer("CartLine", {
+        "product": cat_s.ProductListSerializer(),
+        "quantity": serializers.IntegerField(help_text="Ombordagidan oshmaydi"),
+        "available": serializers.BooleanField(help_text="false — omborda so'ralgancha yo'q"),
+    }, many=True),
+    "total": serializers.IntegerField(), "count": serializers.IntegerField(),
+})
+FavList = cat_s.ProductListSerializer(many=True)
+
+extend_schema_view(
+    get=extend_schema(tags=["account"], summary="Sevimlilar", responses=FavList),
+    post=extend_schema(tags=["account"], summary="Sevimlilarga qo'shish", request=acc.FavoriteAddSerializer, responses=FavList),
+)(acc.FavoritesView)
+extend_schema_view(delete=extend_schema(tags=["account"], summary="Sevimlilardan olib tashlash", responses={204: None}))(
+    acc.FavoriteDeleteView)
+extend_schema_view(post=extend_schema(
+    tags=["account"], summary="Qurilmadagi sevimlilarni serverga qo'shish",
+    description="Kirgandan keyin bir marta: qurilmada saqlangan mahsulot id'lari yuboriladi, javobda to'liq ro'yxat.",
+    request=acc.ProductIdsSerializer, responses=FavList,
+))(acc.FavoritesSyncView)
+extend_schema_view(
+    get=extend_schema(tags=["account"], summary="Savat", responses=CartResponse),
+    put=extend_schema(tags=["account"], summary="Savatni to'liq almashtirish",
+                      description="Bo'sh `items` — savatni tozalash. Nofaol mahsulotlar tashlanadi, son ombordagidan oshmaydi.",
+                      request=acc.CartInput, responses=CartResponse),
+)(acc.CartView)
+extend_schema_view(post=extend_schema(
+    tags=["account"], summary="Savatga qo'shish (bor bo'lsa soni oshadi)", request=acc.CartItemInput, responses=CartResponse,
+))(acc.CartAddView)
+extend_schema_view(delete=extend_schema(tags=["account"], summary="Savatdan olib tashlash", responses=CartResponse))(
+    acc.CartItemDeleteView)
+extend_schema_view(post=extend_schema(
+    tags=["account"], summary="Qurilmadagi savatni serverdagisi bilan birlashtirish",
+    description="Kirgandan keyin bir marta. Bir xil mahsulotda kattaroq son olinadi.",
+    request=acc.CartInput, responses=CartResponse,
+))(acc.CartSyncView)
