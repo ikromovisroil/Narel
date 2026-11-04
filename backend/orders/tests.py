@@ -486,3 +486,102 @@ class MyOrdersPaginationTests(APITestCase):
         last = self.client.get("/api/orders/?page=3").json()
         self.assertEqual(len(last["results"]), 2)
         self.assertIsNone(last["next"])
+
+
+class DjangoAdminOrderTests(APITestCase):
+    """Django admin (texnik panel) orqali buyurtmani o'zgartirish React admin qoidalariga mos ishlaydi."""
+
+    def setUp(self):
+        from django.test import Client
+        from .models import OrderItem
+        self.root = User.objects.create_superuser("root", password="x")
+        self.web = Client(HTTP_HOST="127.0.0.1")
+        self.web.force_login(self.root)
+        cat = Category.objects.create(name="C", slug="c")
+        self.p = Product.objects.create(category=cat, name="P", slug="p", price=100, stock=10)
+        self.order = Order.objects.create(user=self.root, full_name="A", phone="1", delivery_price=20, total=220)
+        self.item = OrderItem.objects.create(order=self.order, product=self.p, price=100, quantity=2)
+        self.url = f"/admin/orders/order/{self.order.pk}/change/"
+
+    def post(self, status="new", qty=2, delete=False, extra=None):
+        data = {
+            "user": self.root.pk, "full_name": "A", "phone": "1", "address": "", "note": "",
+            "status": status, "payment_method": "cash", "delivery_method": "courier", "delivery_price": 20,
+            "expected_date": "", "original_expected_date": "", "delay_note": "", "pickup_branch": "", "pickup_point": "",
+            "items-TOTAL_FORMS": 1, "items-INITIAL_FORMS": 1, "items-MIN_NUM_FORMS": 0, "items-MAX_NUM_FORMS": 1000,
+            "items-0-id": self.item.pk, "items-0-order": self.order.pk, "items-0-product": self.p.pk,
+            "items-0-price": 100, "items-0-quantity": qty,
+        }
+        if delete:
+            data["items-0-DELETE"] = "on"
+        data.update(extra or {})
+        return self.web.post(self.url, data)
+
+    def test_all_admin_pages_open(self):
+        from django.contrib import admin
+        from django.urls import reverse
+        for model in admin.site._registry:
+            m = model._meta
+            r = self.web.get(reverse(f"admin:{m.app_label}_{m.model_name}_changelist"), follow=True)
+            self.assertEqual(r.status_code, 200, m.label)
+
+    def test_quantity_change_updates_stock_and_total(self):
+        r = self.post(qty=5)
+        self.assertEqual(r.status_code, 302)
+        self.p.refresh_from_db(); self.order.refresh_from_db()
+        self.assertEqual(self.p.stock, 7)
+        self.assertEqual(self.order.total, 520)
+
+    def test_not_enough_stock(self):
+        r = self.post(qty=20)
+        self.assertEqual(r.status_code, 200)  # forma xato bilan qaytadi
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.stock, 10)
+
+    def test_delete_item_returns_stock(self):
+        self.post(delete=True)
+        self.p.refresh_from_db(); self.order.refresh_from_db()
+        self.assertEqual(self.p.stock, 12)
+        self.assertEqual(self.order.total, 20)
+
+    def test_cancel_returns_stock_and_cannot_restore(self):
+        self.assertEqual(self.post(status="cancelled").status_code, 302)
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.stock, 12)
+        r = self.post(status="new")
+        self.assertEqual(r.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "cancelled")
+
+    def test_cancel_action(self):
+        r = self.web.post("/admin/orders/order/", {"action": "mark_cancelled", "_selected_action": [self.order.pk]})
+        self.assertEqual(r.status_code, 302)
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.stock, 12)
+        # Ikkinchi marta bekor qilish omborni yana oshirmaydi
+        self.web.post("/admin/orders/order/", {"action": "mark_cancelled", "_selected_action": [self.order.pk]})
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.stock, 12)
+
+
+class ApiDocsTests(APITestCase):
+    """Swagger/ReDoc: DEBUG'da ochiq, serverda faqat xodim ko'radi."""
+
+    PAGES = ["/api/schema/", "/api/docs/", "/api/redoc/"]
+
+    @override_settings(DEBUG=True)
+    def test_open_in_debug(self):
+        for url in self.PAGES:
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+
+    @override_settings(DEBUG=False)
+    def test_closed_in_production(self):
+        for url in self.PAGES:
+            self.assertIn(self.client.get(url).status_code, (401, 403), url)
+        customer = User.objects.create_user("mijoz", password="x")
+        self.client.force_login(customer)
+        self.assertEqual(self.client.get("/api/docs/").status_code, 403)
+        staff = User.objects.create_user("xodim", password="x", is_staff=True)
+        self.client.force_login(staff)
+        for url in self.PAGES:
+            self.assertEqual(self.client.get(url).status_code, 200, url)

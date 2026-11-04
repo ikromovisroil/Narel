@@ -30,6 +30,8 @@ class OrderViewSet(
     pagination_class = OrderPagination
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):  # Swagger sxemasini yaratishda foydalanuvchi yo'q
+            return Order.objects.none()
         return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
 
     def perform_create(self, serializer):

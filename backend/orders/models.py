@@ -85,7 +85,7 @@ class OrderItem(models.Model):
         verbose_name_plural = "Buyurtma qatorlari"
 
     @property
-    def subtotal(self):
+    def subtotal(self) -> int:
         return self.price * self.quantity
 
 
@@ -191,4 +191,6 @@ class PhoneCode(models.Model):
     ip = models.GenericIPAddressField(null=True, blank=True)
 
     class Meta:
+        verbose_name = "SMS kod"
+        verbose_name_plural = "SMS kodlar"
         ordering = ["-created_at", "-id"]

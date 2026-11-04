@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "django_filters",
+    "drf_spectacular",
     "catalog",
     "orders",
     "dashboard",
@@ -113,6 +114,38 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 12,
     # Izoh yozish: bir foydalanuvchi daqiqasiga 10 tagacha
     "DEFAULT_THROTTLE_RATES": {"comments": "10/min", "password": "10/min", "otp": "5/min", "otp_verify": "10/min"},
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# Swagger (/api/docs/). DEBUG'da hamma uchun ochiq, serverda — faqat /admin/ ga kirgan xodim
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Narel API",
+    "DESCRIPTION": (
+        "Narel internet-do'koni API'si. To'liq izohlar: docs/API.md. "
+        "Token olish: mijoz — /api/auth/code/send/ + /api/auth/code/verify/, xodim — /api/auth/login/. "
+        "Keyin yuqoridagi **Authorize** tugmasiga `access` tokenni kiriting."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # CDN versiyalari qotirilgan (redoc@latest ESM'ga o'tgan va sahifa bo'sh chiqadi)
+    "SWAGGER_UI_DIST": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.20.0",
+    "SWAGGER_UI_FAVICON_HREF": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.20.0/favicon-32x32.png",
+    "REDOC_DIST": "https://cdn.jsdelivr.net/npm/redoc@2.5.0",
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "config.schema.tag_by_path",
+    ],
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": r"/api/",
+    "SWAGGER_UI_SETTINGS": {"persistAuthorization": True, "displayRequestDuration": True, "filter": True},
+    "TAGS": [
+        {"name": "auth", "description": "Kirish, tokenlar, profil"},
+        {"name": "catalog", "description": "Kategoriya, brend, banner, mahsulotlar"},
+        {"name": "orders", "description": "Mijoz buyurtmalari"},
+        {"name": "comments", "description": "Mahsulot izohlari"},
+        {"name": "store", "description": "Do'kon ma'lumotlari, to'lov usullari, oferta"},
+        {"name": "admin", "description": "Admin panel API (xodimlar, bo'lim ruxsatlari bilan)"},
+    ],
 }
 
 SIMPLE_JWT = {

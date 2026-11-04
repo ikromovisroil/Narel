@@ -73,13 +73,13 @@ class Product(models.Model):
         return self.name
 
     @property
-    def discount_percent(self):
+    def discount_percent(self) -> int:
         if self.old_price and self.old_price > self.price:
             return int((self.old_price - self.price) * 100 / self.old_price)
         return 0
 
     @property
-    def monthly_price(self):
+    def monthly_price(self) -> int:
         """12 oylik muddatli to'lovda oylik summa (ustamasiz, taxminiy)."""
         return int((self.price / Decimal(self.INSTALLMENT_MONTHS)).quantize(Decimal("1")))
 
