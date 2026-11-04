@@ -160,19 +160,27 @@ class UserSerializer(AccountFieldsMixin, serializers.ModelSerializer):
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.SerializerMethodField()
-    product_slug = serializers.CharField(source="product.slug", read_only=True)
+    product_slug = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
         fields = ["product", "product_name", "product_slug", "price", "quantity", "subtotal"]
         read_only_fields = ["price", "subtotal"]
 
-    def get_product_name(self, obj):
-        return localized(obj.product, "name", get_lang(self.context.get("request")))
+    def get_product_name(self, obj) -> str:
+        # Buyurtma paytidagi nom (eski yozuvlarda bo'lmasa — mahsulotning hozirgi nomi)
+        source = obj if obj.product_name else obj.product
+        field = "product_name" if obj.product_name else "name"
+        return localized(source, field, get_lang(self.context.get("request")))
+
+    def get_product_slug(self, obj) -> str | None:
+        # O'chirilgan yoki yashirilgan mahsulotga havola berilmaydi (sahifasi ochilmaydi)
+        p = obj.product
+        return p.slug if p.is_active and p.deleted_at is None else None
 
 
 class OrderItemInputSerializer(serializers.Serializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.filter(is_active=True))
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.alive().filter(is_active=True))
     quantity = serializers.IntegerField(min_value=1)
 
 

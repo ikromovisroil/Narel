@@ -47,8 +47,8 @@ class OrderItemInline(admin.TabularInline):
     model = OrderItem
     formset = OrderItemFormSet
     extra = 0
-    fields = ["product", "price", "quantity", "subtotal_display"]
-    readonly_fields = ["subtotal_display"]
+    fields = ["product", "product_name", "price", "quantity", "subtotal_display"]
+    readonly_fields = ["product_name", "subtotal_display"]
     autocomplete_fields = ["product"]
     verbose_name_plural = "Mahsulotlar (o'zgartirilsa ombor qoldig'i va jami summa avtomatik qayta hisoblanadi)"
 
@@ -61,7 +61,7 @@ class OrderItemInline(admin.TabularInline):
 
     def get_readonly_fields(self, request, obj=None):
         if self._closed(obj):
-            return ["product", "price", "quantity", "subtotal_display"]
+            return ["product", "product_name", "price", "quantity", "subtotal_display"]
         return super().get_readonly_fields(request, obj)
 
     def has_add_permission(self, request, obj=None):
@@ -144,6 +144,8 @@ class OrderAdmin(admin.ModelAdmin):
                 Product.objects.filter(pk=old_product).update(stock=F("stock") + old_qty)
             if not item.price:
                 item.price = item.product.price
+            if item.pk not in before or before[item.pk][0] != item.product_id:
+                item.product_name, item.product_name_ru = item.product.name, item.product.name_ru
             Product.objects.filter(pk=item.product_id).update(stock=F("stock") - item.quantity)
             item.save()
         formset.save_m2m()

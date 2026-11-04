@@ -1,7 +1,44 @@
 from django.contrib import admin
+from django.utils import timezone
 from django.utils.html import format_html
 
 from .models import Banner, Brand, Category, Product, ProductImage, ProductSpec
+
+
+class DeletedFilter(admin.SimpleListFilter):
+    title = "o'chirilganmi"
+    parameter_name = "deleted"
+
+    def lookups(self, request, model_admin):
+        return [("no", "Yo'q (ishlatilmoqda)"), ("yes", "Ha (admin panelda o'chirilgan)")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(deleted_at__isnull=False)
+        if self.value() == "no":
+            return queryset.filter(deleted_at__isnull=True)
+        return queryset
+
+
+class SoftDeleteAdmin(admin.ModelAdmin):
+    """Admin panelda o'chirilganlar shu yerda ko'rinadi va "Qaytarish" bilan tiklanadi."""
+
+    actions = ["restore", "hide"]
+
+    @admin.display(description="Holati", ordering="deleted_at")
+    def state(self, obj):
+        if obj.deleted_at:
+            return format_html('<b style="color:#dc2626">O\'chirilgan</b><br><small>{}</small>',
+                               timezone.localtime(obj.deleted_at).strftime("%d.%m.%Y %H:%M"))
+        return format_html('<span style="color:#17a34a">{}</span>', "Ishlatilmoqda")
+
+    @admin.action(description="Qaytarish (admin panel va saytga)")
+    def restore(self, request, queryset):
+        self.message_user(request, f"{queryset.update(deleted_at=None)} ta qaytarildi")
+
+    @admin.action(description="O'chirish (yashirish, tarix saqlanadi)")
+    def hide(self, request, queryset):
+        self.message_user(request, f"{queryset.filter(deleted_at__isnull=True).update(deleted_at=timezone.now())} ta o'chirildi")
 
 
 def thumb(image, size=48):
@@ -12,9 +49,9 @@ def thumb(image, size=48):
 
 
 @admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
-    list_display = ["name", "name_ru", "slug", "parent", "order", "products_count"]
-    list_filter = ["parent"]
+class CategoryAdmin(SoftDeleteAdmin):
+    list_display = ["name", "name_ru", "slug", "parent", "order", "products_count", "state"]
+    list_filter = [DeletedFilter, "parent"]
     list_editable = ["order"]
     prepopulated_fields = {"slug": ["name"]}
     search_fields = ["name", "name_ru", "slug"]
@@ -27,8 +64,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(Brand)
-class BrandAdmin(admin.ModelAdmin):
-    list_display = ["logo_preview", "name", "slug"]
+class BrandAdmin(SoftDeleteAdmin):
+    list_display = ["logo_preview", "name", "slug", "state"]
+    list_filter = [DeletedFilter]
     list_display_links = ["logo_preview", "name"]
     prepopulated_fields = {"slug": ["name"]}
     search_fields = ["name", "slug"]
@@ -56,11 +94,11 @@ class ProductSpecInline(admin.TabularInline):
 
 
 @admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(SoftDeleteAdmin):
     list_display = ["preview", "name", "sku", "category", "brand", "price", "old_price", "stock",
-                    "is_active", "is_hit", "is_new"]
+                    "is_active", "is_hit", "is_new", "state"]
     list_display_links = ["preview", "name"]
-    list_filter = ["is_active", "is_hit", "is_new", "category", "brand", "created_at"]
+    list_filter = [DeletedFilter, "is_active", "is_hit", "is_new", "category", "brand", "created_at"]
     list_editable = ["price", "old_price", "stock", "is_active", "is_hit", "is_new"]
     list_select_related = ["category", "brand"]
     list_per_page = 50
@@ -70,13 +108,15 @@ class ProductAdmin(admin.ModelAdmin):
     readonly_fields = ["preview_big", "created_at", "updated_at"]
     date_hierarchy = "created_at"
     inlines = [ProductImageInline, ProductSpecInline]
-    actions = ["make_active", "make_inactive"]
+    actions = ["make_active", "make_inactive", "restore", "hide"]
     fieldsets = [
         (None, {"fields": ["name", "name_ru", "slug", "sku", "category", "brand"]}),
         ("Narx va ombor", {"fields": ["price", "old_price", "stock"]}),
         ("Rasm", {"fields": ["preview_big", "image"]}),
         ("Tavsif", {"fields": ["description", "description_ru"]}),
-        ("Belgilar", {"fields": ["is_active", "is_hit", "is_new"]}),
+        ("Belgilar", {"fields": ["is_active", "is_hit", "is_new", "deleted_at"],
+                      "description": "\"O'chirilgan vaqti\" to'ldirilgan bo'lsa — admin panelda va saytda ko'rinmaydi. "
+                                     "Qaytarish uchun bo'shating."}),
         ("Vaqt", {"fields": ["created_at", "updated_at"], "classes": ["collapse"]}),
     ]
 

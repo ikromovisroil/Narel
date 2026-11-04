@@ -77,6 +77,9 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    # Buyurtma paytidagi nom — mahsulot keyin o'zgartirilsa yoki o'chirilsa ham tarix o'zgarmaydi
+    product_name = models.CharField("Mahsulot nomi", max_length=200, blank=True)
+    product_name_ru = models.CharField("Mahsulot nomi (ruscha)", max_length=200, blank=True)
     price = models.DecimalField("Narxi", max_digits=14, decimal_places=0)
     quantity = models.PositiveIntegerField("Soni")
 
@@ -87,6 +90,11 @@ class OrderItem(models.Model):
     @property
     def subtotal(self) -> int:
         return self.price * self.quantity
+
+    def save(self, *args, **kwargs):
+        if not self.product_name and self.product_id:
+            self.product_name, self.product_name_ru = self.product.name, self.product.name_ru
+        super().save(*args, **kwargs)
 
 
 class StoreSettings(models.Model):

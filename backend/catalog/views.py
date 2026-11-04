@@ -1,5 +1,5 @@
 import django_filters
-from django.db.models import Case, F, IntegerField, Q, Value, When
+from django.db.models import Prefetch, Case, F, IntegerField, Q, Value, When
 from django.db.models.functions import Abs
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
@@ -22,7 +22,10 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = "slug"
 
     def get_queryset(self):
-        qs = Category.objects.prefetch_related("children__children")
+        alive = Category.objects.alive()
+        qs = alive.prefetch_related(
+            Prefetch("children", queryset=alive.prefetch_related(Prefetch("children", queryset=alive)))
+        )
         # Ro'yxatda faqat yuqori darajadagilar (bolalari ichida keladi)
         if self.action == "list":
             qs = qs.filter(parent__isnull=True)
@@ -30,7 +33,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class BrandViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Brand.objects.all()
+    queryset = Brand.objects.alive()
     serializer_class = BrandSerializer
     pagination_class = None
     lookup_field = "slug"
@@ -88,7 +91,7 @@ class MultiScriptSearchFilter(SearchFilter):
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = (
-        Product.objects.filter(is_active=True)
+        Product.objects.alive().filter(is_active=True)
         .select_related("category", "brand")
         .prefetch_related("images", "specs")
     )
@@ -109,7 +112,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         Tartib: avval shu brend, keyin narxi yaqini. Faqat sotuvda borlari."""
         product = self.get_object()
         base = (
-            Product.objects.filter(is_active=True, stock__gt=0)
+            Product.objects.alive().filter(is_active=True, stock__gt=0)
             .exclude(pk=product.pk)
             .select_related("category", "brand")
             .annotate(

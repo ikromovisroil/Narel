@@ -17,7 +17,7 @@ MAX_ITEMS = 200  # bir so'rovda ko'pi bilan
 
 
 def active_products(ids):
-    return {p.pk: p for p in Product.objects.filter(pk__in=ids, is_active=True).select_related("brand", "category")}
+    return {p.pk: p for p in Product.objects.alive().filter(pk__in=ids, is_active=True).select_related("brand", "category")}
 
 
 class ProductIdsSerializer(serializers.Serializer):
@@ -29,7 +29,7 @@ class FavoriteAddSerializer(serializers.Serializer):
 
 
 def favorites_response(request):
-    qs = (Favorite.objects.filter(user=request.user, product__is_active=True)
+    qs = (Favorite.objects.filter(user=request.user, product__is_active=True, product__deleted_at__isnull=True)
           .select_related("product__brand", "product__category"))
     products = [f.product for f in qs]
     return Response(ProductListSerializer(products, many=True, context={"request": request}).data)
@@ -90,7 +90,7 @@ class CartInput(serializers.Serializer):
 
 
 def cart_response(request):
-    items = (CartItem.objects.filter(user=request.user, product__is_active=True)
+    items = (CartItem.objects.filter(user=request.user, product__is_active=True, product__deleted_at__isnull=True)
              .select_related("product__brand", "product__category"))
     data, total = [], 0
     for item in items:

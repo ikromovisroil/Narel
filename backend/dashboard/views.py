@@ -76,11 +76,22 @@ class CategoryViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
     upload_field = "icon"
     upload_rule = "category"
 
-    def perform_destroy(self, instance):
-        scope = Category.objects.filter(parent_id=instance.parent_id)
-        instance.delete()
-        renumber(scope)
-    queryset = Category.objects.annotate(products_count=Count("products")).order_by("order", "name")
+    def destroy(self, request, *args, **kwargs):
+        """O'chirish = yashirish (ichki kategoriyalari bilan). Ichida mahsulot bo'lsa — mumkin emas."""
+        instance = self.get_object()
+        family = descendants(instance)
+        left = Product.objects.alive().filter(category__in=family).count()
+        if left:
+            return Response({"detail": f"Bu kategoriyada (yoki ichki kategoriyalarida) {left} ta mahsulot bor. "
+                                       "Avval ularni boshqa kategoriyaga o'tkazing yoki o'chiring."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        now = timezone.now()
+        Category.objects.filter(pk__in=[c.pk for c in family]).update(deleted_at=now)
+        renumber(Category.objects.alive().filter(parent_id=instance.parent_id))
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    queryset = Category.objects.alive().annotate(
+        products_count=Count("products", filter=Q(products__deleted_at__isnull=True))
+    ).order_by("order", "name")
 
 
 class BrandViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
@@ -89,7 +100,20 @@ class BrandViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
     pagination_class = None
     upload_field = "logo"
     upload_rule = "brand"
-    queryset = Brand.objects.annotate(products_count=Count("products"))
+    queryset = Brand.objects.alive().annotate(
+        products_count=Count("products", filter=Q(products__deleted_at__isnull=True))
+    )
+
+    def destroy(self, request, *args, **kwargs):
+        """O'chirish = yashirish. Mahsulotlari bo'lsa — mumkin emas (brend ulardan yo'qolmasin)."""
+        instance = self.get_object()
+        left = Product.objects.alive().filter(brand=instance).count()
+        if left:
+            return Response({"detail": f"Bu brendda {left} ta mahsulot bor. "
+                                       "Avval ularning brendini o'zgartiring yoki mahsulotlarni o'chiring."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     search_fields = ["name"]
 
 
@@ -114,7 +138,7 @@ class ProductViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = (
-            Product.objects.select_related("category", "brand")
+            Product.objects.alive().select_related("category", "brand")
             .prefetch_related("images", "specs")
             .annotate(sold=Coalesce(
                 Sum("orderitem__quantity", filter=~Q(orderitem__order__status=Order.Status.CANCELLED)), 0
@@ -124,6 +148,12 @@ class ProductViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
         if self.request.query_params.get("low_stock") == "true":
             qs = qs.filter(stock__lte=LOW_STOCK)
         return qs
+
+    def destroy(self, request, *args, **kwargs):
+        """O'chirish = yashirish: mahsulot saytdan va admin paneldan yo'qoladi, lekin buyurtmalar, izohlar
+        va tarix saqlanadi. Django admin'dan qaytarish mumkin."""
+        self.get_object().soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser])
     def images(self, request, pk=None):
@@ -233,10 +263,10 @@ class StatsView(APIView):
             "total": summary(valid),
             "new_orders": status_counts.get(Order.Status.NEW, 0),
             "status_counts": status_counts,
-            "products": Product.objects.count(),
+            "products": Product.objects.alive().count(),
             "customers": User.objects.filter(is_staff=False).count(),
             "low_stock": list(
-                Product.objects.filter(is_active=True, stock__lte=LOW_STOCK)
+                Product.objects.alive().filter(is_active=True, stock__lte=LOW_STOCK)
                 .order_by("stock").values("id", "name", "stock")[:10]
             ),
             "top_products": top,
@@ -254,3 +284,12 @@ class ImageRulesView(APIView):
 
     def get(self, request):
         return Response(public_rules())
+
+
+def descendants(category):
+    """Kategoriya va uning barcha ichki kategoriyalari (o'chirilmaganlari)."""
+    family, level = [category], [category]
+    while level:
+        level = list(Category.objects.alive().filter(parent__in=level))
+        family += level
+    return family

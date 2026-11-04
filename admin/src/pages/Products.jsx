@@ -153,6 +153,7 @@ export default function Products() {
                 <Button icon={<EditOutlined />} onClick={() => navigate(`/products/${p.id}`)} />
                 {perm.delete && (
                   <Popconfirm title="Mahsulotni o'chirasizmi?" okText="Ha" cancelText="Yo'q"
+                              description={<>Saytdan va admin paneldan yo'qoladi.<br />Buyurtmalar va izohlar saqlanadi.</>}
                               okButtonProps={{ danger: true }} onConfirm={() => remove(p.id)}>
                     <Button danger icon={<DeleteOutlined />} />
                   </Popconfirm>

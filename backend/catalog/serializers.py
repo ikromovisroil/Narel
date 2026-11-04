@@ -26,7 +26,9 @@ class CategorySerializer(LangMixin, serializers.ModelSerializer):
         return localized(obj, "name", self.lang)
 
     def get_children(self, obj):
-        return CategorySerializer(obj.children.all(), many=True, context=self.context).data
+        # prefetch'da faqat o'chirilmaganlar; boshqa joyda chaqirilsa ham o'chirilganlar chiqmasin
+        children = [c for c in obj.children.all() if c.deleted_at is None]
+        return CategorySerializer(children, many=True, context=self.context).data
 
 
 class BrandSerializer(serializers.ModelSerializer):

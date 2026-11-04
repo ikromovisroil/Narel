@@ -137,7 +137,9 @@ export default function Orders() {
             <div className="order-items">
               {o.items.map(i => (
                 <div key={i.product} className="row-between small">
-                  <Link to={`/product/${i.product_slug}`}>{i.product_name} × {i.quantity}</Link>
+                  {i.product_slug
+                    ? <Link to={`/product/${i.product_slug}`}>{i.product_name} × {i.quantity}</Link>
+                    : <span>{i.product_name} × {i.quantity}</span>}
                   <span>{formatPrice(i.subtotal)}</span>
                 </div>
               ))}

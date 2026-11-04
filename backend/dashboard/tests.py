@@ -8,7 +8,7 @@ from django.test import override_settings
 from PIL import Image
 from rest_framework.test import APITestCase
 
-from catalog.models import Category, Product
+from catalog.models import Brand, Category, Product
 from orders.models import Order, OrderItem
 
 MEDIA = tempfile.mkdtemp()
@@ -220,3 +220,92 @@ class AdminApiTests(APITestCase):
         self.client.patch("/api/auth/me/", {"is_staff": True}, format="json")
         self.user.refresh_from_db()
         self.assertFalse(self.user.is_staff)
+
+
+class SoftDeleteTests(APITestCase):
+    """Admin panelda o'chirish = yashirish: tarix, buyurtmalar va izohlar saqlanadi, Django admin'dan qaytariladi."""
+
+    def setUp(self):
+        from orders.models import CustomerProfile, Order, OrderItem
+        self.root = User.objects.create_superuser("root", password="x")
+        self.client.force_authenticate(self.root)
+        self.top = Category.objects.create(name="Texnika", slug="texnika")
+        self.cat = Category.objects.create(name="Choynaklar", slug="choynaklar", parent=self.top)
+        self.brand = Brand.objects.create(name="Tefal", slug="tefal")
+        self.p = Product.objects.create(category=self.cat, brand=self.brand, name="Tefal choynak", slug="tefal-choynak",
+                                        price=100, stock=5)
+        self.customer = User.objects.create_user("998901234567")
+        CustomerProfile.objects.create(user=self.customer, phone="+998 90 123 45 67")
+        self.order = Order.objects.create(user=self.customer, full_name="A", phone="1", total=100)
+        OrderItem.objects.create(order=self.order, product=self.p, price=100, quantity=1)
+
+    def test_delete_ordered_product_hides_it_but_keeps_history(self):
+        r = self.client.delete(f"/api/admin/products/{self.p.id}/")
+        self.assertEqual(r.status_code, 204)
+        self.p.refresh_from_db()
+        self.assertIsNotNone(self.p.deleted_at)
+        # Admin panelda va saytda yo'q
+        self.assertNotIn(self.p.id, [x["id"] for x in self.client.get("/api/admin/products/").data["results"]])
+        self.assertEqual(self.client.get(f"/api/admin/products/{self.p.id}/").status_code, 404)
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get("/api/products/").data["count"], 0)
+        self.assertEqual(self.client.get("/api/products/tefal-choynak/").status_code, 404)
+        # Mijozning buyurtma tarixida nom qoladi, havola yo'q
+        self.client.force_authenticate(self.customer)
+        item = self.client.get("/api/orders/").data["results"][0]["items"][0]
+        self.assertEqual((item["product_name"], item["product_slug"]), ("Tefal choynak", None))
+        # Buyurtma qilib bo'lmaydi
+        r = self.client.post("/api/orders/", {"cart": [{"product": self.p.id, "quantity": 1}]}, format="json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_order_keeps_name_after_rename(self):
+        self.p.name = "Yangi nom"
+        self.p.save()
+        self.client.force_authenticate(self.customer)
+        self.assertEqual(self.client.get("/api/orders/").data["results"][0]["items"][0]["product_name"], "Tefal choynak")
+
+    def test_django_admin_shows_and_restores(self):
+        from django.test import Client
+        self.client.delete(f"/api/admin/products/{self.p.id}/")
+        web = Client(HTTP_HOST="127.0.0.1")
+        web.force_login(self.root)
+        page = web.get("/admin/catalog/product/?deleted=yes").content.decode()
+        self.assertIn("Tefal choynak", page)
+        web.post("/admin/catalog/product/", {"action": "restore", "_selected_action": [self.p.id]})
+        self.p.refresh_from_db()
+        self.assertIsNone(self.p.deleted_at)
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get("/api/products/tefal-choynak/").status_code, 200)
+
+    def test_category_and_brand_with_products_cannot_be_deleted(self):
+        self.assertEqual(self.client.delete(f"/api/admin/categories/{self.top.id}/").status_code, 400)
+        self.assertEqual(self.client.delete(f"/api/admin/brands/{self.brand.id}/").status_code, 400)
+        # Mahsulot o'chirilgach — mumkin; ichki kategoriya ham birga yashiriladi
+        self.client.delete(f"/api/admin/products/{self.p.id}/")
+        self.assertEqual(self.client.delete(f"/api/admin/categories/{self.top.id}/").status_code, 204)
+        self.assertEqual(self.client.delete(f"/api/admin/brands/{self.brand.id}/").status_code, 204)
+        self.cat.refresh_from_db()
+        self.assertIsNotNone(self.cat.deleted_at)
+        self.assertEqual(self.client.get("/api/admin/categories/").data, [])
+        self.assertEqual(self.client.get("/api/admin/brands/").data, [])
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get("/api/categories/").data, [])
+        # Hech narsa bazadan o'chmagan
+        self.assertEqual((Category.objects.count(), Brand.objects.count(), Product.objects.count()), (2, 1, 1))
+
+    def test_deleted_category_cannot_be_chosen(self):
+        empty = Category.objects.create(name="Bo'sh", slug="bosh")
+        self.client.delete(f"/api/admin/categories/{empty.id}/")
+        r = self.client.patch(f"/api/admin/products/{self.p.id}/", {"category": empty.id}, format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("category", r.data)
+
+    def test_counts_and_favorites_skip_deleted(self):
+        from orders.models import Favorite
+        Favorite.objects.create(user=self.customer, product=self.p)
+        self.client.delete(f"/api/admin/products/{self.p.id}/")
+        self.assertEqual(self.client.get("/api/admin/stats/").data["products"], 0)
+        cats = {c["name"]: c["products_count"] for c in self.client.get("/api/admin/categories/").data}
+        self.assertEqual(cats["Choynaklar"], 0)
+        self.client.force_authenticate(self.customer)
+        self.assertEqual(self.client.get("/api/favorites/").data, [])

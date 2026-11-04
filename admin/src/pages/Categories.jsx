@@ -104,7 +104,7 @@ export default function Categories() {
                 {perm.add && <Button size="small" icon={<PlusOutlined />} title="Ichki kategoriya" onClick={() => open(null, c.id)} />}
                 <Button size="small" icon={<EditOutlined />} onClick={() => open(c)} />
                 {perm.delete && (
-                  <Popconfirm title={`"${c.name}" o'chirilsinmi?`} description="Ichki kategoriyalari ham o'chadi."
+                  <Popconfirm title={`"${c.name}" o'chirilsinmi?`} description="Ichki kategoriyalari ham o'chadi. Ichida mahsulot bo'lsa, o'chirib bo'lmaydi."
                               okText="Ha" cancelText="Yo'q" okButtonProps={{ danger: true }} onConfirm={() => remove(c)}>
                     <Button size="small" danger icon={<DeleteOutlined />} />
                   </Popconfirm>

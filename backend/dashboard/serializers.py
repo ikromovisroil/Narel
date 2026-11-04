@@ -58,7 +58,12 @@ class CategorySerializer(OrderedMixin, AutoSlugMixin, serializers.ModelSerialize
     order = serializers.IntegerField(min_value=1, required=False, allow_null=True)
 
     def scope(self, instance):
-        return Category.objects.filter(parent_id=instance.parent_id)
+        return Category.objects.alive().filter(parent_id=instance.parent_id)
+
+    def get_fields(self):
+        fields = super().get_fields()
+        fields["parent"].queryset = Category.objects.alive()  # o'chirilganni ota qilib bo'lmaydi
+        return fields
 
     def scope_key(self, instance):
         return instance.parent_id
@@ -113,6 +118,13 @@ class ProductSerializer(AutoSlugMixin, serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
     brand_name = serializers.CharField(source="brand.name", read_only=True, default=None)
     sold = serializers.IntegerField(read_only=True, default=0)
+
+    def get_fields(self):
+        fields = super().get_fields()
+        # O'chirilgan kategoriya yoki brendni tanlab bo'lmaydi
+        fields["category"].queryset = Category.objects.alive()
+        fields["brand"].queryset = Brand.objects.alive()
+        return fields
 
     class Meta:
         model = Product

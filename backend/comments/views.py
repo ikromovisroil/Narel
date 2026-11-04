@@ -50,7 +50,7 @@ class ProductCommentsView(APIView):
         return [ScopedRateThrottle()] if self.request.method == "POST" else []
 
     def get(self, request, slug):
-        product = get_object_or_404(Product, slug=slug, is_active=True)
+        product = get_object_or_404(Product, slug=slug, is_active=True, deleted_at__isnull=True)
         paginator = CommentPagination()
         page = paginator.paginate_queryset(visible_threads(product), request, view=self)
         data = CommentSerializer(page, many=True, context={"request": request, "product": product}).data
@@ -59,7 +59,7 @@ class ProductCommentsView(APIView):
         return response
 
     def post(self, request, slug):
-        product = get_object_or_404(Product, slug=slug, is_active=True)
+        product = get_object_or_404(Product, slug=slug, is_active=True, deleted_at__isnull=True)
         serializer = CommentSerializer(data=request.data, context={"request": request, "product": product})
         serializer.is_valid(raise_exception=True)
         comment = serializer.save(product=product, user=request.user)
@@ -91,7 +91,8 @@ class AdminCommentViewSet(
     def get_queryset(self):
         staff_reply = Comment.objects.filter(parent=OuterRef("pk"), user__is_staff=True)
         qs = (
-            Comment.objects.select_related("user", "product", "parent")
+            Comment.objects.filter(product__deleted_at__isnull=True)  # o'chirilgan mahsulot izohlari admin'da ko'rinmaydi
+            .select_related("user", "product", "parent")
             .annotate(replies_count=Count("replies"), staff_replied=Exists(staff_reply))
             .order_by("-created_at", "-id")
         )

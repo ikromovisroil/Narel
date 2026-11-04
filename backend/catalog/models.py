@@ -1,9 +1,28 @@
 from decimal import Decimal
 
 from django.db import models
+from django.utils import timezone
 
 
-class Category(models.Model):
+class SoftDeleteQuerySet(models.QuerySet):
+    def alive(self):
+        return self.filter(deleted_at__isnull=True)
+
+    def deleted(self):
+        return self.filter(deleted_at__isnull=False)
+
+
+class SoftDeleteMixin:
+    def soft_delete(self):
+        self.deleted_at = timezone.now()
+        self.save(update_fields=["deleted_at"])
+
+    def restore(self):
+        self.deleted_at = None
+        self.save(update_fields=["deleted_at"])
+
+
+class Category(SoftDeleteMixin, models.Model):
     name = models.CharField("Nomi", max_length=120)
     name_ru = models.CharField("Nomi (ruscha)", max_length=120, blank=True)
     slug = models.SlugField(unique=True)
@@ -12,6 +31,11 @@ class Category(models.Model):
     )
     icon = models.ImageField("Ikonka", upload_to="categories/", blank=True)
     order = models.PositiveIntegerField("Tartib", default=0)
+    # O'chirilgan (yashirilgan): saytda va admin panelda ko'rinmaydi, Django admin'da qoladi va qaytarsa bo'ladi.
+    # Buyurtmalar, izohlar va tarix saqlanib qoladi.
+    deleted_at = models.DateTimeField("O'chirilgan vaqti", null=True, blank=True, db_index=True)
+
+    objects = SoftDeleteQuerySet.as_manager()
 
     class Meta:
         verbose_name = "Kategoriya"
@@ -22,10 +46,15 @@ class Category(models.Model):
         return self.name
 
 
-class Brand(models.Model):
+class Brand(SoftDeleteMixin, models.Model):
     name = models.CharField("Nomi", max_length=100)
     slug = models.SlugField(unique=True)
     logo = models.ImageField("Logo", upload_to="brands/", blank=True)
+    # O'chirilgan (yashirilgan): saytda va admin panelda ko'rinmaydi, Django admin'da qoladi va qaytarsa bo'ladi.
+    # Buyurtmalar, izohlar va tarix saqlanib qoladi.
+    deleted_at = models.DateTimeField("O'chirilgan vaqti", null=True, blank=True, db_index=True)
+
+    objects = SoftDeleteQuerySet.as_manager()
 
     class Meta:
         verbose_name = "Brend"
@@ -36,7 +65,7 @@ class Brand(models.Model):
         return self.name
 
 
-class Product(models.Model):
+class Product(SoftDeleteMixin, models.Model):
     category = models.ForeignKey(
         Category, on_delete=models.PROTECT, related_name="products", verbose_name="Kategoriya"
     )
@@ -61,6 +90,11 @@ class Product(models.Model):
     is_new = models.BooleanField("Yangi", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # O'chirilgan (yashirilgan): saytda va admin panelda ko'rinmaydi, Django admin'da qoladi va qaytarsa bo'ladi.
+    # Buyurtmalar, izohlar va tarix saqlanib qoladi.
+    deleted_at = models.DateTimeField("O'chirilgan vaqti", null=True, blank=True, db_index=True)
+
+    objects = SoftDeleteQuerySet.as_manager()
 
     INSTALLMENT_MONTHS = 12
 

@@ -397,9 +397,16 @@ Superuser hammasiga kira oladi. Ruxsat bo'lmasa `403`.
 - O'tgan sanani tanlab bo'lmaydi; yakunlangan buyurtma sanasi o'zgarmaydi.
 - `cancelled` bo'lganda mahsulotlar omborga qaytadi. Bekor qilinganni qayta tiklab bo'lmaydi.
 
-### O'chirish himoyasi
+### O'chirish = yashirish
 
-Mahsulot yoki kategoriyaga buyurtma bog'langan bo'lsa o'chirish `400` qaytaradi — o'rniga nofaol qiling.
+Admin panelda mahsulot, kategoriya yoki brend o'chirilsa (`DELETE`), bazadan o'chmaydi — `deleted_at` belgilanadi:
+saytda, mobil ilovada va admin panelda ko'rinmaydi, lekin **buyurtmalar, izohlar va tarix saqlanadi**.
+Django admin'da "o'chirilganmi" filtri va **"Qaytarish"** amali bor.
+
+- Kategoriya ichki kategoriyalari bilan yashiriladi; ichida mahsulot bo'lsa — `400`.
+- Brendda mahsulot bo'lsa — `400`.
+- Buyurtma qatorida mahsulot nomi buyurtma paytidagicha saqlanadi (`product_name`); mahsulot o'chirilgan
+  yoki yashirilgan bo'lsa `product_slug: null` (havola berilmaydi).
 
 ---
 

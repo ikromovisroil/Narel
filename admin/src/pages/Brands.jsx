@@ -86,7 +86,7 @@ export default function Brands() {
               <Space>
                 <Button size="small" icon={<EditOutlined />} onClick={() => open(b)} />
                 {perm.delete && (
-                  <Popconfirm title={`"${b.name}" o'chirilsinmi?`} description="Mahsulotlardan brend olib tashlanadi."
+                  <Popconfirm title={`"${b.name}" o'chirilsinmi?`} description="Bu brenddagi mahsulotlar bo'lsa, o'chirib bo'lmaydi."
                               okText="Ha" cancelText="Yo'q" okButtonProps={{ danger: true }} onConfirm={() => remove(b)}>
                     <Button size="small" danger icon={<DeleteOutlined />} />
                   </Popconfirm>
