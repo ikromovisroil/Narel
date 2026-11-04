@@ -94,3 +94,11 @@ body { margin: 0; background: #f4f5f8; }
 .sms-template { background: #fafafa; border: 1px dashed #d9d9d9; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
 .sms-log { display: grid; gap: 6px; }
 .sms-log-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+
+/* Yon menyu: dasturchi havolasi eng pastda */
+.ant-layout-sider-children { display: flex; flex-direction: column; }
+.ant-layout-sider-children > .ant-menu { flex: 1; overflow-y: auto; }
+.dev-credit { display: block; padding: 14px 24px 18px; border-top: 1px solid rgba(255,255,255,.08);
+  color: rgba(255,255,255,.45); font-size: 12px; line-height: 1.6; text-decoration: none; }
+.ant-layout-sider-collapsed .dev-credit { text-align: center; padding: 14px 0 18px; font-size: 16px; }
+.dev-credit:hover { color: #fff; }

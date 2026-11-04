@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Avatar, Badge, Button, Dropdown, Grid, Layout, Menu } from 'antd'
+import { Avatar, Badge, Button, Dropdown, Grid, Layout, Menu, Tooltip } from 'antd'
 import {
-  LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined,
+  LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SendOutlined, UserOutlined,
 } from '@ant-design/icons'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api } from './api'
@@ -58,6 +58,11 @@ export default function AdminLayout() {
           theme="dark" mode="inline" selectedKeys={[selected]} items={items}
           onClick={({ key }) => { navigate(key); if (mobile) setCollapsed(true) }}
         />
+        <Tooltip title={collapsed ? 'Dasturchi: Ikromov.I' : ''} placement="right">
+          <a className="dev-credit" href="https://t.me/Isroil_0309" target="_blank" rel="noopener noreferrer">
+            {collapsed ? <SendOutlined /> : <>Dasturchi: <b>Ikromov.I</b></>}
+          </a>
+        </Tooltip>
       </Sider>
       <Layout>
         <Header style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 1px 0 #eee' }}>
