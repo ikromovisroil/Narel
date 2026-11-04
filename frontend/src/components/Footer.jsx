@@ -28,7 +28,12 @@ export default function Footer() {
           {storeInfo?.working_hours && <span className="muted">{storeInfo.working_hours}</span>}
         </div>
       </div>
-      <div className="container copyright muted">© 2026 {SHOP_NAME}</div>
+      <div className="container copyright muted">
+        <span>© 2026 {SHOP_NAME}</span>
+        <a className="dev-credit" href="https://t.me/Isroil_0309" target="_blank" rel="noopener noreferrer">
+          {t('Dasturchi')}: Ikromov.I
+        </a>
+      </div>
     </footer>
   )
 }

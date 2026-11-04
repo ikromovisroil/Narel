@@ -7,7 +7,9 @@ from django.urls import reverse
 
 from catalog.models import Product
 
-from .models import Branch, CustomerProfile, Order, OrderItem, PhoneCode, StoreSettings
+from .models import (
+    Branch, CustomerProfile, IntegrationSettings, Order, OrderItem, PhoneCode, SmsLog, StoreSettings,
+)
 
 CLOSED = (Order.Status.DELIVERED, Order.Status.CANCELLED)
 
@@ -249,6 +251,61 @@ class PhoneCodeAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     exclude = ["code_hash"]
     readonly_fields = ["phone", "created_at", "attempts", "used", "ip"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+# ---------- Integratsiyalar (SMS, Google) — yagona yozuv ----------
+
+@admin.register(IntegrationSettings)
+class IntegrationSettingsAdmin(admin.ModelAdmin):
+    readonly_fields = ["updated_at"]
+    fieldsets = [
+        ("SMS (Eskiz.uz)", {"fields": ["sms_enabled", "eskiz_email", "eskiz_password", "eskiz_from",
+                                       "sms_low_balance", "sms_otp_domain"],
+                            "description": "Bo'sh maydon o'rniga .env dagi qiymat ishlatiladi. "
+                                           "Yo'riqnoma: admin panel → Sozlamalar → Integratsiyalar."}),
+        ("Google orqali kirish", {"fields": ["google_client_id"]}),
+        (None, {"fields": ["updated_at"]}),
+    ]
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        if db_field.name == "eskiz_password":
+            from django import forms as f
+            kwargs["widget"] = f.PasswordInput(render_value=True)
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        from .sms import forget_token
+        forget_token()
+
+    def changelist_view(self, request, extra_context=None):
+        return redirect(reverse("admin:orders_integrationsettings_change", args=[IntegrationSettings.load().pk]))
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+# ---------- SMS tarixi (faqat ko'rish) ----------
+
+@admin.register(SmsLog)
+class SmsLogAdmin(admin.ModelAdmin):
+    list_display = ["created_at", "phone", "status", "short_error", "provider_id"]
+    list_filter = ["status", "created_at"]
+    search_fields = ["phone", "error", "provider_id"]
+    date_hierarchy = "created_at"
+
+    @admin.display(description="Xato sababi")
+    def short_error(self, obj):
+        return obj.error[:80] or "—"
 
     def has_add_permission(self, request):
         return False

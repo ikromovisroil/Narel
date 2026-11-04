@@ -279,7 +279,10 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .footer-grid > div { display: grid; gap: 8px; align-content: start; }
 .footer h4 { color: #fff; margin-bottom: 4px; }
 .footer .logo { margin-bottom: 4px; }
-.copyright { margin-top: 32px; padding-top: 16px; border-top: 1px solid #333844; font-size: 13px; }
+.copyright { margin-top: 32px; padding-top: 16px; border-top: 1px solid #333844; font-size: 13px;
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; }
+.dev-credit { color: inherit; text-decoration: none; }
+.dev-credit:hover { color: #fff; text-decoration: underline; }
 
 /* Moslashuvchan */
 @media (max-width: 1024px) {

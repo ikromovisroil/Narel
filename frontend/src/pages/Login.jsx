@@ -6,6 +6,7 @@ import { t } from '../i18n'
 import { formatPhone, phoneOk } from '../phone'
 import { useStore } from '../store'
 import { useNext } from './Auth'
+import { useWebOtp } from '../webotp'
 
 const firstError = (err, key) => [].concat(err?.data?.[key] || [])[0]
 
@@ -76,6 +77,9 @@ function PhoneLogin({ next }) {
     setCode(v)
     if (v.length === 6) verify(v)
   }
+
+  // Android: SMS kelganda kod o'zi tushadi va kirish boshlanadi
+  useWebOtp(step === 'code' && !busy, c => { setCode(c); if (c.length === 6) verify(c) })
 
   if (step === 'code') {
     return (

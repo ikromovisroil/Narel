@@ -23,7 +23,7 @@ from catalog.views import ProductViewSet
 from comments.views import AdminCommentViewSet, MyCommentView, ProductCommentsView
 from dashboard.views import ImageRulesView, ProductImageViewSet, StatsView
 from dashboard.views import ProductViewSet as AdminProductViewSet
-from orders import store
+from orders import integrations_views as integ, store
 from orders.google import GoogleLoginSerializer, GoogleLoginView
 from orders.login import (
     ChangePhoneView, OfferView, SendCodeSerializer, SendCodeView, VerifyCodeSerializer, VerifyCodeView,
@@ -211,3 +211,18 @@ class DocsAccess(BasePermission):
             return True
         u = request.user
         return bool(u and u.is_authenticated and u.is_staff and u.is_active)
+
+
+extend_schema_view(
+    get=extend_schema(tags=["admin"], summary="Integratsiyalar: SMS va Google sozlamalari", responses=OBJ),
+    patch=extend_schema(tags=["admin"], summary="Integratsiyalarni saqlash",
+                        description="eskiz_password bo'sh yuborilsa eskisi saqlanadi; o'qishda hech qachon qaytmaydi.",
+                        request=integ.IntegrationSettingsSerializer, responses=OBJ),
+)(integ.AdminIntegrationsView)
+extend_schema_view(post=extend_schema(
+    tags=["admin"], summary="Eskiz ulanishini tekshirish (balans)", request=None, responses=OBJ,
+))(integ.SmsCheckView)
+extend_schema_view(post=extend_schema(
+    tags=["admin"], summary="Sinov SMS yuborish",
+    request=inline_serializer("SmsTest", {"phone": serializers.CharField()}), responses=OBJ,
+))(integ.SmsTestView)

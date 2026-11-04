@@ -9,6 +9,7 @@ import PaymentGuide from '../components/PaymentGuide'
 import ProviderContacts from '../components/ProviderContacts'
 import OfferCard from '../components/OfferCard'
 import StoreSettingsCard from '../components/StoreSettingsCard'
+import IntegrationsCard from '../components/IntegrationsCard'
 import { useCanEdit } from '../auth'
 
 // Logo yuklanmagan bo'lsa — rangli harf
@@ -159,6 +160,7 @@ export default function Settings() {
 
       <StoreSettingsCard />
       <OfferCard />
+      <IntegrationsCard />
 
       <Card title="To'lov usullari" extra={<Typography.Text type="secondary">{activeCount} ta yoqilgan</Typography.Text>}>
         <Alert

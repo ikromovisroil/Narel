@@ -585,3 +585,135 @@ class ApiDocsTests(APITestCase):
         self.client.force_login(staff)
         for url in self.PAGES:
             self.assertEqual(self.client.get(url).status_code, 200, url)
+
+
+class IntegrationSettingsTests(APITestCase):
+    """Admin Sozlamalar → Integratsiyalar: SMS (Eskiz) va Google kalitlari, SMS tarixi, balans."""
+
+    URL = "/api/admin/integrations/"
+
+    def setUp(self):
+        import urllib.error
+        from django.core.cache import cache
+        cache.clear()
+        # Haqiqiy Eskiz'ga hech qachon chiqmaymiz
+        offline = patch("orders.sms.urllib.request.urlopen", side_effect=urllib.error.URLError("offline (test)"))
+        offline.start()
+        self.addCleanup(offline.stop)
+        self.root = User.objects.create_superuser("root", password="x")
+        self.client.force_authenticate(self.root)
+
+    def eskiz(self, responses):
+        """Eskiz API soxtasi: yo'l -> javob (dict) yoki Exception."""
+        calls = []
+
+        def fake(path, data=None, token=None, method="POST"):
+            calls.append((path, data))
+            res = responses[path]
+            if isinstance(res, Exception):
+                raise res
+            return res
+        return patch("orders.sms._request", side_effect=fake), calls
+
+    LOGIN = {"/auth/login": {"message": "token_generated", "data": {"token": "T"}}}
+
+    def configure(self, **extra):
+        body = {"sms_enabled": True, "eskiz_email": "shop@narel.uz", "eskiz_password": "secret", **extra}
+        return self.client.patch(self.URL, body, format="json")
+
+    def test_password_never_returned_and_kept_when_blank(self):
+        r = self.configure()
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("eskiz_password", r.data)
+        self.assertTrue(r.data["has_password"])
+        self.client.patch(self.URL, {"eskiz_password": "", "eskiz_from": "Narel"}, format="json")
+        from .models import IntegrationSettings
+        s = IntegrationSettings.load()
+        self.assertEqual((s.eskiz_password, s.eskiz_from), ("secret", "Narel"))
+        self.assertIn("sms", self.client.get(self.URL).data["guides"])
+
+    def test_validation(self):
+        r = self.client.patch(self.URL, {"google_client_id": "abc", "sms_otp_domain": "https://narel.uz/"}, format="json")
+        self.assertIn("google_client_id", r.data)
+        r = self.client.patch(self.URL, {"sms_otp_domain": "https://narel.uz/"}, format="json")
+        self.assertEqual(r.data["sms_otp_domain"], "narel.uz")
+        self.assertIn("@narel.uz #123456", r.data["sms_templates"][0]["text"])
+
+    def test_needs_settings_permission(self):
+        staff = User.objects.create_user("op", password="x", is_staff=True)
+        self.client.force_authenticate(staff)
+        self.assertEqual(self.client.get(self.URL).status_code, 403)
+
+    @override_settings(DEBUG=False)
+    def test_send_logs_and_hides_code(self):
+        from .models import SmsLog
+        self.configure(sms_otp_domain="narel.uz")
+        mock, calls = self.eskiz({**self.LOGIN, "/message/sms/send": {"id": "abc", "status": "waiting"}})
+        with mock:
+            r = self.client.post("/api/auth/code/send/", {"phone": "+998 90 111 22 33", "agree": True}, format="json")
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("debug_code", r.data)
+        sent = calls[-1][1]
+        self.assertEqual(sent["mobile_phone"], "998901112233")
+        self.assertRegex(sent["message"], r"kirish kodi (\d{6})\. Hech kimga bermang\.\n\n@narel\.uz #\1$")
+        log = SmsLog.objects.get()
+        self.assertEqual((log.status, log.provider_id), ("sent", "abc"))
+        self.assertIn("******", log.text)
+        self.assertNotRegex(log.text, r"\d{6}")
+
+    @override_settings(DEBUG=False)
+    def test_eskiz_error_is_logged_with_reason(self):
+        import io
+        import urllib.error
+        from .models import SmsLog
+        self.configure()
+        err = urllib.error.HTTPError("u", 400, "Bad Request", {}, io.BytesIO(b'{"message": "Matn moderatsiyadan o\'tmagan"}'))
+        # _request ichidagi sabab o'qish mantig'ini sinash uchun haqiqiy funksiyani urlopen darajasida soxtalaymiz
+        def urlopen(req, timeout):
+            if req.full_url.endswith("/auth/login"):
+                return io.BytesIO(b'{"data": {"token": "T"}}')
+            raise err
+        with patch("orders.sms.urllib.request.urlopen", side_effect=urlopen):
+            r = self.client.post("/api/auth/code/send/", {"phone": "+998 90 111 22 34", "agree": True}, format="json")
+        self.assertEqual(r.status_code, 503)
+        log = SmsLog.objects.get()
+        self.assertEqual(log.status, "failed")
+        self.assertIn("moderatsiyadan", log.error)
+        self.assertFalse(PhoneCode.objects.exists())  # kod saqlanmaydi — qayta urinish mumkin
+
+    @override_settings(DEBUG=False)
+    def test_disabled_sms(self):
+        self.configure(sms_enabled=False)
+        r = self.client.post("/api/auth/code/send/", {"phone": "+998 90 111 22 35", "agree": True}, format="json")
+        self.assertEqual(r.status_code, 503)
+        self.assertEqual(self.client.get(self.URL).data["sms"]["mode"], "off")
+
+    def test_check_balance_and_low_warning(self):
+        self.configure(sms_low_balance=50000)
+        mock, _ = self.eskiz({**self.LOGIN, "/user/get-limit": {"data": {"balance": 12000}, "status": "success"}})
+        with mock:
+            r = self.client.post(self.URL + "sms-check/")
+            self.assertEqual(r.data["balance"], 12000)
+            stats = self.client.get("/api/admin/stats/").data["sms"]
+        self.assertTrue(stats["low"])
+        self.assertEqual(stats["balance"], 12000)
+
+    def test_check_balance_bad_login(self):
+        self.configure()
+        mock, _ = self.eskiz({"/auth/login": {"message": "Invalid credentials"}})
+        with mock:
+            r = self.client.post(self.URL + "sms-check/")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Invalid credentials", r.data["detail"])
+
+    @override_settings(DEBUG=True)
+    def test_test_sms_in_debug(self):
+        r = self.client.post(self.URL + "sms-test/", {"phone": "+998 90 111 22 36"}, format="json")
+        self.assertEqual((r.status_code, r.data["status"]), (200, "test"))
+
+    @override_settings(GOOGLE_CLIENT_ID="")
+    def test_google_client_id_from_admin(self):
+        self.assertEqual(self.client.get("/api/store-settings/").data["google_client_id"], "")
+        cid = "123-abc.apps.googleusercontent.com"
+        self.client.patch(self.URL, {"google_client_id": cid}, format="json")
+        self.assertEqual(self.client.get("/api/store-settings/").data["google_client_id"], cid)

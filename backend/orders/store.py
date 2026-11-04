@@ -11,6 +11,7 @@ from rest_framework import viewsets
 from dashboard.views import AdminMixin
 
 from .branches import PublicBranchSerializer, active_branches
+from .integrations import google_client_id
 from .models import Branch, StoreSettings
 
 
@@ -32,7 +33,7 @@ class PublicStoreSettingsSerializer(serializers.ModelSerializer):
 
     def get_google_client_id(self, obj):
         from django.conf import settings
-        return settings.GOOGLE_CLIENT_ID
+        return google_client_id()
 
 
     def get_sms_test_mode(self, obj):

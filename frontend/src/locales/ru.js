@@ -280,4 +280,5 @@ export default {
   'Olib ketish joyi': 'Пункт самовывоза',
   'buyurtma tasdiqlangach aniqlashtiriladi': 'уточним после подтверждения заказа',
   "O'xshash mahsulotlar": 'Похожие товары',
+  'Dasturchi': 'Разработчик',
 }

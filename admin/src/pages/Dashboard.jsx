@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Col, Empty, Row, Segmented, Spin, Statistic, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Col, Empty, Row, Segmented, Spin, Statistic, Table, Tag, Typography } from 'antd'
 import {
   DollarOutlined, ShoppingCartOutlined, TeamOutlined, WarningOutlined,
 } from '@ant-design/icons'
@@ -8,6 +8,23 @@ import dayjs from 'dayjs'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { formatNumber, formatPrice, ORDER_STATUS } from '../utils'
+
+// SMS muammosi bo'lsa ogohlantirish (faqat sozlamalarga ruxsati bor xodimga keladi)
+function SmsAlert({ sms }) {
+  if (!sms) return null
+  const go = <Link to="/settings"><Button size="small">Sozlamalar</Button></Link>
+  let alert = null
+  if (sms.mode === 'off') {
+    alert = { type: 'error', title: sms.enabled ? 'SMS sozlanmagan — mijozlar telefon orqali kira olmaydi' : "SMS o'chirilgan — mijozlar telefon orqali kira olmaydi" }
+  } else if (sms.mode === 'test') {
+    alert = { type: 'info', title: "SMS test rejimida: kod mijozga yuborilmaydi, ekranga chiqadi. Saytni ishga tushirishdan oldin Eskiz'ni ulang." }
+  } else if (sms.unreachable) {
+    alert = { type: 'error', title: `Eskiz'ga ulanib bo'lmadi — SMS kodlar ketmasligi mumkin${sms.error ? `: ${sms.error}` : ''}` }
+  } else if (sms.low) {
+    alert = { type: 'warning', title: `Eskiz balansi kam qoldi: ${formatNumber(sms.balance)}. To'ldirmasangiz SMS kodlar to'xtaydi.` }
+  }
+  return alert && <Alert showIcon {...alert} action={go} style={{ marginBottom: 16 }} />
+}
 
 // Oddiy ro'yxat: chapda matn, o'ngda qiymat
 function SimpleList({ items, render }) {
@@ -51,6 +68,7 @@ export default function Dashboard() {
   return (
     <>
       <Typography.Title level={3} style={{ marginTop: 0 }}>Bosh sahifa</Typography.Title>
+      <SmsAlert sms={stats.sms} />
 
       <Row gutter={[16, 16]}>
         {cards.map(c => (

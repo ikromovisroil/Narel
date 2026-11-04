@@ -168,3 +168,8 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 ESKIZ_EMAIL = os.getenv("ESKIZ_EMAIL", "").strip()
 ESKIZ_PASSWORD = os.getenv("ESKIZ_PASSWORD", "").strip()
 ESKIZ_FROM = os.getenv("ESKIZ_FROM", "4546").strip()
+# Balans shu qiymatdan kam bo'lsa admin panel bosh sahifasida ogohlantirish chiqadi
+ESKIZ_LOW_BALANCE = int(os.getenv("ESKIZ_LOW_BALANCE", "20000") or 0)
+# Android Chrome kodni o'zi to'ldirishi uchun sayt domeni (masalan narel.uz). Bo'sh — o'chiq.
+# Diqqat: domen qo'shilsa SMS matni o'zgaradi — Eskiz kabinetida yangi matnni ham moderatsiyadan o'tkazing.
+SMS_OTP_DOMAIN = os.getenv("SMS_OTP_DOMAIN", "").strip().removeprefix("https://").removeprefix("http://").strip("/")

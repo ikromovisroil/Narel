@@ -12,6 +12,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .integrations import google_client_id
 from .models import CustomerProfile
 
 User = get_user_model()
@@ -38,7 +39,7 @@ def verify_google_token(credential):
     except Exception:
         return None
     ok = (
-        info.get("aud") == settings.GOOGLE_CLIENT_ID
+        info.get("aud") == google_client_id()
         and info.get("iss") in GOOGLE_ISSUERS
         and str(info.get("email_verified")).lower() == "true"
         and info.get("email")
@@ -63,7 +64,7 @@ class GoogleLoginView(APIView):
     throttle_scope = "password"
 
     def post(self, request):
-        if not settings.GOOGLE_CLIENT_ID:
+        if not google_client_id():
             return Response({"detail": _msg(request, "off")}, status=status.HTTP_400_BAD_REQUEST)
         s = GoogleLoginSerializer(data=request.data)
         s.is_valid(raise_exception=True)

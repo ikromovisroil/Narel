@@ -46,12 +46,16 @@ MESSAGES = {
         "uz": "Bu raqam boshqa hisobga bog'langan.",
         "ru": "Этот номер привязан к другому аккаунту.",
     },
-    "sms_text": {"uz": "Narel: kirish kodi {0}. Hech kimga bermang.", "ru": "Narel: код для входа {0}. Никому не сообщайте."},
 }
 
 
 def msg(request, key, *args):
     return MESSAGES[key][get_lang(request)].format(*args)
+
+
+def sms_text(request, code):
+    from .integrations import sms_config, sms_text as build
+    return build(get_lang(request), code, sms_config().otp_domain)
 
 
 def bad(request, key, *args, field=None, code=status.HTTP_400_BAD_REQUEST, **extra):
@@ -119,7 +123,7 @@ class SendCodeView(APIView):
 
         code = f"{secrets.randbelow(1_000_000):06d}"
         try:
-            send_sms(phone, msg(request, "sms_text", code))
+            send_sms(phone, sms_text(request, code), safe_text=sms_text(request, "******"))
         except SmsError:
             return bad(request, "sms", code=status.HTTP_503_SERVICE_UNAVAILABLE)
         # Oldingi kodlar bekor

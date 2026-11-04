@@ -194,3 +194,57 @@ class PhoneCode(models.Model):
         verbose_name = "SMS kod"
         verbose_name_plural = "SMS kodlar"
         ordering = ["-created_at", "-id"]
+
+
+class SmsLog(models.Model):
+    """Yuborilgan SMS'lar tarixi. Kirish kodi yashiriladi ("******")."""
+
+    class Status(models.TextChoices):
+        SENT = "sent", "Yuborildi"
+        FAILED = "failed", "Xato"
+        TEST = "test", "Test rejimi"
+
+    phone = models.CharField("Telefon", max_length=20, db_index=True)
+    text = models.CharField("Matn", max_length=500)
+    status = models.CharField("Holati", max_length=10, choices=Status.choices)
+    provider_id = models.CharField("Eskiz ID", max_length=64, blank=True)
+    error = models.CharField("Xato sababi", max_length=500, blank=True)
+    created_at = models.DateTimeField("Vaqti", auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "SMS tarixi"
+        verbose_name_plural = "SMS tarixi"
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.phone} · {self.get_status_display()}"
+
+
+class IntegrationSettings(models.Model):
+    """Tashqi xizmatlar (SMS, Google) — admin panelning Sozlamalar sahifasidan kiritiladi (yagona yozuv, pk=1).
+    Maydon bo'sh bo'lsa .env dagi qiymat ishlatiladi (orders.integrations)."""
+
+    sms_enabled = models.BooleanField("SMS yoqilgan", default=True)
+    eskiz_email = models.CharField("Eskiz login (email)", max_length=150, blank=True)
+    eskiz_password = models.CharField("Eskiz paroli / maxfiy kalit", max_length=255, blank=True)
+    eskiz_from = models.CharField("Jo'natuvchi nomi", max_length=30, blank=True)
+    sms_low_balance = models.PositiveIntegerField("Balans ogohlantirishi chegarasi", null=True, blank=True)
+    sms_otp_domain = models.CharField("Kodni avtomatik to'ldirish domeni", max_length=100, blank=True)
+    google_client_id = models.CharField("Google Client ID", max_length=255, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Integratsiyalar (SMS, Google)"
+        verbose_name_plural = "Integratsiyalar (SMS, Google)"
+
+    def __str__(self):
+        return "Integratsiyalar"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj

@@ -1,3 +1,5 @@
+from orders.sms import sms_status
+from staff.models import has_section
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -238,6 +240,7 @@ class StatsView(APIView):
                 .order_by("stock").values("id", "name", "stock")[:10]
             ),
             "top_products": top,
+            "sms": sms_status() if has_section(request.user, "settings") else None,
             "chart": chart,
             "recent_orders": s.OrderSerializer(
                 Order.objects.select_related("user").prefetch_related("items__product")

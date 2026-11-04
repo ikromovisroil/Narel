@@ -5,6 +5,7 @@ from payments.views import AdminPaymentMethodViewSet
 from staff.views import StaffViewSet
 from comments.views import AdminCommentViewSet
 from orders.store import AdminBranchViewSet, AdminStoreSettingsView
+from orders.integrations_views import AdminIntegrationsView, SmsCheckView, SmsTestView
 
 from . import views
 
@@ -25,4 +26,7 @@ urlpatterns = [
     path("stats/", views.StatsView.as_view()),
     path("image-rules/", views.ImageRulesView.as_view()),
     path("store-settings/", AdminStoreSettingsView.as_view()),
+    path("integrations/", AdminIntegrationsView.as_view()),
+    path("integrations/sms-check/", SmsCheckView.as_view()),
+    path("integrations/sms-test/", SmsTestView.as_view()),
 ] + router.urls

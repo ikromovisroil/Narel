@@ -3,6 +3,7 @@ import { api, errorText } from '../api'
 import { t } from '../i18n'
 import { formatPhone, phoneOk } from '../phone'
 import { useStore } from '../store'
+import { useWebOtp } from '../webotp'
 
 const firstError = (err, key) => [].concat(err?.data?.[key] || [])[0]
 
@@ -57,6 +58,8 @@ export default function PhoneVerify({ onDone, onCancel }) {
       setBusy(false)
     }
   }
+
+  useWebOtp(step === 'code' && !busy, c => { setCode(c); if (c.length === 6) verify(c) })
 
   return (
     <div className="phone-verify">

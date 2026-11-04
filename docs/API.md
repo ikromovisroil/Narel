@@ -340,6 +340,9 @@ Superuser hammasiga kira oladi. Ruxsat bo'lmasa `403`.
 | `{ADMIN}payment-methods/` | GET, PATCH | settings | Maxfiy kalitlar qaytmaydi; bo'sh yuborilsa eskisi saqlanadi |
 | `{ADMIN}store-settings/` | GET, PATCH | settings | Yetkazish, aloqa, oferta matni |
 | `{ADMIN}branches/` | CRUD | settings | Filiallar; oxirgi faol filialni o'chirib bo'lmaydi |
+| `{ADMIN}integrations/` | GET, PATCH | settings | SMS (Eskiz) va Google kalitlari, yo'riqnomalar, SMS holati/balansi, oxirgi 15 ta SMS. `eskiz_password` qaytmaydi; bo'sh yuborilsa eskisi qoladi |
+| `{ADMIN}integrations/sms-check/` | POST | settings (change) | Eskiz'ga ulanib balansni tekshirish |
+| `{ADMIN}integrations/sms-test/` | POST | settings (change) | Sinov SMS: `{"phone": "+998 …"}` |
 
 ### Buyurtma holatini o'zgartirish
 
@@ -369,14 +372,26 @@ xodim profillari, foydalanuvchilar, guruhlar.
 
 ---
 
-## 10. Sozlamalar (`backend/.env`)
+## 10. SMS va Google (admin panelda sozlanadi)
+
+Admin panel → **Sozlamalar → Integratsiyalar**. Har biri yo'riqnoma bilan:
+
+- **SMS (Eskiz.uz)**: login, parol, jo'natuvchi nomi, balans ogohlantirishi, Android'da kodni avtomatik to'ldirish domeni.
+  "Ulanishni tekshirish" (balans) va "Sinov SMS" tugmalari. Eskiz'da moderatsiyaga beriladigan matnlar nusxa olishga tayyor holda ko'rsatiladi.
+- **Google orqali kirish**: Client ID.
+
+Har bir SMS tarixga yoziladi (kod "******" bilan yashiriladi): holati, Eskiz ID, xato sababi.
+Balans kam qolsa yoki Eskiz'ga ulanib bo'lmasa — admin bosh sahifasida ogohlantirish.
+Admin panelda bo'sh qoldirilgan maydon o'rniga `.env` dagi qiymat ishlatiladi.
+
+## 11. Sozlamalar (`backend/.env`)
 
 | O'zgaruvchi | Vazifasi |
 |---|---|
 | `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS` | Django asosiy sozlamalari |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT` | Ma'lumotlar bazasi |
 | `CORS_ALLOWED_ORIGINS` | Sayt va admin manzillari |
-| `GOOGLE_CLIENT_ID` | Google orqali kirish (bo'sh bo'lsa o'chiq) |
-| `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`, `ESKIZ_FROM` | Eskiz.uz SMS xizmati |
+| `GOOGLE_CLIENT_ID` | Google orqali kirish (zaxira — odatda admin panelda kiritiladi) |
+| `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`, `ESKIZ_FROM`, `ESKIZ_LOW_BALANCE`, `SMS_OTP_DOMAIN` | SMS (zaxira — odatda admin panelda kiritiladi) |
 
 Namuna: `backend/.env.example`.
