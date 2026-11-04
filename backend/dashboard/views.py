@@ -133,7 +133,7 @@ class ProductViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
     section = "products"
     serializer_class = s.ProductSerializer
     search_fields = ["name", "sku", "brand__name"]
-    ordering_fields = ["name", "price", "stock", "created_at", "sold"]
+    ordering_fields = ["name", "sku", "price", "stock", "created_at", "sold"]
     filterset_fields = ["category", "brand", "is_active", "is_hit", "is_new"]
 
     def get_queryset(self):

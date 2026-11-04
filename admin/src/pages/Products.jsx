@@ -113,10 +113,16 @@ export default function Products() {
               <Space orientation="vertical" size={0}>
                 <Link to={`/products/${p.id}`}>{name}</Link>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {p.category_name}{p.brand_name && ` · ${p.brand_name}`}{p.sku && ` · ${p.sku}`}
+                  {p.category_name}{p.brand_name && ` · ${p.brand_name}`}
                 </Typography.Text>
               </Space>
             ),
+          },
+          {
+            title: 'Kod', dataIndex: 'sku', sorter: true, sortOrder: sortOrder('sku'), width: 130,
+            render: sku => (sku
+              ? <Typography.Text code copyable={{ text: sku, tooltips: ['Nusxa olish', 'Nusxa olindi'] }}>{sku}</Typography.Text>
+              : <Typography.Text type="secondary">—</Typography.Text>),
           },
           {
             title: 'Narx', dataIndex: 'price', sorter: true, sortOrder: sortOrder('price'), align: 'right',

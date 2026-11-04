@@ -55,6 +55,7 @@ AUDIT_KEEP_DAYS = int(os.getenv("AUDIT_KEEP_DAYS", "365") or 365)
 DJANGO_ADMIN_URL = (os.getenv("DJANGO_ADMIN_URL", "admin").strip().strip("/") or "admin") + "/"
 
 INSTALLED_APPS = [
+    "jazzmin",  # Django admin ko'rinishi (config/jazzmin.py) — django.contrib.admin dan oldin
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -134,6 +135,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "config" / "static"]  # Narel logosi (Django admin)
+
+from .jazzmin import JAZZMIN_SETTINGS, JAZZMIN_UI_TWEAKS  # noqa: E402,F401
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
