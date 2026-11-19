@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, formatPrice } from '../api'
 import Comments from '../components/Comments'
@@ -17,6 +17,16 @@ export default function ProductPage() {
   const [error, setError] = useState(false)
   const [img, setImg] = useState(null)
   const [tab, setTab] = useState('specs')
+  const tabsRef = useRef(null)
+  // "Barcha xususiyatlar" — xususiyatlar tabini ochib, unga silliq tushadi (sarlavha ostida qolmasin)
+  const showAllSpecs = () => {
+    setTab('specs')
+    const el = tabsRef.current
+    if (!el) return
+    const header = document.querySelector('.header')
+    const offset = header && getComputedStyle(header).position === 'sticky' ? header.offsetHeight + 16 : 16
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' })
+  }
   const [commentSummary, setCommentSummary] = useState(null)
 
   useEffect(() => {
@@ -63,7 +73,7 @@ export default function ProductPage() {
           <dl className="specs short">
             {p.specs.slice(0, 5).map(s => <div key={s.name}><dt>{s.name}</dt><dd>{s.value}</dd></div>)}
           </dl>
-          <button className="link" onClick={() => setTab('specs')}>{t('Barcha xususiyatlar ↓')}</button>
+          <button className="link" onClick={showAllSpecs}>{t('Barcha xususiyatlar ↓')}</button>
         </div>
 
         <div className="buy-box">
@@ -108,7 +118,7 @@ export default function ProductPage() {
 
       <SimilarProducts slug={p.slug} />
 
-      <div className="tabs">
+      <div className="tabs" ref={tabsRef}>
         <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('Xususiyatlar')}</button>
         <button className={tab === 'desc' ? 'on' : ''} onClick={() => setTab('desc')}>{t('Tavsif')}</button>
         <button className={tab === 'comments' ? 'on' : ''} onClick={() => setTab('comments')}>
