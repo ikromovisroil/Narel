@@ -53,6 +53,9 @@ class OrderedMixin:
         return None
 
 
+MAX_CATEGORY_DEPTH = 3
+
+
 class CategorySerializer(OrderedMixin, AutoSlugMixin, serializers.ModelSerializer):
     products_count = serializers.IntegerField(read_only=True)
     order = serializers.IntegerField(min_value=1, required=False, allow_null=True)
@@ -79,7 +82,28 @@ class CategorySerializer(OrderedMixin, AutoSlugMixin, serializers.ModelSerialize
             if node.pk == self.instance.pk:
                 raise serializers.ValidationError("Kategoriya o'zining ichiga joylasha olmaydi.")
             node = node.parent
+        # Sayt kategoriyalarni 3 bosqichgacha ko'rsatadi: ota + shu kategoriya + uning ichkilari <= 3
+        depth = 0
+        node = parent
+        while node is not None:
+            depth += 1
+            node = node.parent
+        if depth + self._subtree_height() > MAX_CATEGORY_DEPTH:
+            raise serializers.ValidationError(
+                f"Kategoriyalar {MAX_CATEGORY_DEPTH} bosqichdan chuqur bo'lishi mumkin emas."
+            )
         return parent
+
+    def _subtree_height(self):
+        """Shu kategoriya va uning ichki kategoriyalari nechta bosqich egallaydi (yangisi — 1)."""
+        if not self.instance:
+            return 1
+        height, level = 1, [self.instance.pk]
+        while True:
+            level = list(Category.objects.alive().filter(parent_id__in=level).values_list("pk", flat=True))
+            if not level:
+                return height
+            height += 1
 
 
 class BrandSerializer(AutoSlugMixin, serializers.ModelSerializer):

@@ -170,6 +170,20 @@ class AdminApiTests(APITestCase):
         r = self.client.delete(f"/api/admin/categories/{self.cat.id}/")
         self.assertEqual(r.status_code, 400)
 
+    def test_category_max_depth(self):
+        lvl2 = Category.objects.create(name="2", slug="lvl2", parent=self.cat)
+        lvl3 = Category.objects.create(name="3", slug="lvl3", parent=lvl2)
+        # 4-bosqich qo'shib bo'lmaydi
+        r = self.client.post("/api/admin/categories/", {"name": "4", "parent": lvl3.id}, format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("parent", r.data)
+        # 3-bosqich bo'ladi
+        self.assertEqual(self.client.post("/api/admin/categories/", {"name": "3b", "parent": lvl2.id}, format="json").status_code, 201)
+        # Ichida 2 bosqich bor kategoriyani 2-bosqichga ko'chirib bo'lmaydi (jami 4 bo'lib qoladi)
+        other = Category.objects.create(name="Boshqa", slug="boshqa")
+        r = self.client.patch(f"/api/admin/categories/{self.cat.id}/", {"parent": other.id}, format="json")
+        self.assertEqual(r.status_code, 400)
+
     def test_category_cannot_be_own_parent(self):
         child = Category.objects.create(name="Ichki", slug="ichki", parent=self.cat)
         r = self.client.patch(f"/api/admin/categories/{self.cat.id}/", {"parent": child.id}, format="json")

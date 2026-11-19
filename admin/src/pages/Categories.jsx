@@ -8,6 +8,9 @@ import ImageUpload from '../components/ImageUpload'
 import { categoryTree } from './ProductForm'
 import { usePerm } from '../auth'
 
+// Sayt kategoriyalarni 3 bosqichgacha ko'rsatadi (backend ham tekshiradi)
+const MAX_DEPTH = 3
+
 export default function Categories() {
   const perm = usePerm('categories')
   const { message } = App.useApp()
@@ -20,22 +23,30 @@ export default function Categories() {
   const load = () => api('/admin/categories/').then(setList).finally(() => setLoading(false))
   useEffect(() => { load() }, [])
 
-  // Jadval uchun daraxt
-  const rows = useMemo(() => {
+  // Jadval uchun daraxt; depth — bosqich (1 dan), height — o'zi va ichkilari nechta bosqich
+  const { rows, info } = useMemo(() => {
     const byParent = {}
+    const info = {}
     list.forEach(c => { (byParent[c.parent ?? 'root'] ||= []).push(c) })
-    const build = pid => (byParent[pid] || []).map(c => {
-      const children = build(c.id)
-      return { ...c, children: children.length ? children : undefined }
+    const build = (pid, depth) => (byParent[pid] || []).map(c => {
+      const children = build(c.id, depth + 1)
+      const height = 1 + Math.max(0, ...children.map(ch => info[ch.id].height))
+      info[c.id] = { depth, height }
+      return { ...c, depth, children: children.length ? children : undefined }
     })
-    return build('root')
+    return { rows: build('root', 1), info }
   }, [list])
 
-  // Kategoriyani o'zining ichiga qo'yib bo'lmaydi
+  // Kategoriyani o'zining ichiga qo'yib bo'lmaydi; 3 bosqichdan chuqurga tushadigan ota tanlanmaydi
   const parentTree = useMemo(() => {
-    const strip = nodes => nodes.filter(n => n.value !== editing?.id).map(n => ({ ...n, children: strip(n.children) }))
+    const height = editing?.id ? info[editing.id]?.height ?? 1 : 1
+    const strip = nodes => nodes.filter(n => n.value !== editing?.id).map(n => ({
+      ...n,
+      disabled: info[n.value]?.depth + height > MAX_DEPTH,
+      children: strip(n.children),
+    }))
     return strip(categoryTree(list))
-  }, [list, editing])
+  }, [list, editing, info])
 
   const open = (cat, parent = null) => {
     setEditing(cat || {})
@@ -101,7 +112,9 @@ export default function Categories() {
             title: '', key: 'a', width: 170, align: 'right',
             render: (_, c) => (
               <Space>
-                {perm.add && <Button size="small" icon={<PlusOutlined />} title="Ichki kategoriya" onClick={() => open(null, c.id)} />}
+                {perm.add && c.depth < MAX_DEPTH && (
+                  <Button size="small" icon={<PlusOutlined />} title="Ichki kategoriya" onClick={() => open(null, c.id)} />
+                )}
                 <Button size="small" icon={<EditOutlined />} onClick={() => open(c)} />
                 {perm.delete && (
                   <Popconfirm title={`"${c.name}" o'chirilsinmi?`} description="Ichki kategoriyalari ham o'chadi. Ichida mahsulot bo'lsa, o'chirib bo'lmaydi."
@@ -128,7 +141,7 @@ export default function Categories() {
           <Form.Item name="name_ru" label="Nomi (ruscha)" extra="Bo'sh bo'lsa o'zbekcha nomi ko'rinadi">
             <Input placeholder="Например: Холодильники" />
           </Form.Item>
-          <Form.Item name="parent" label="Ota kategoriya">
+          <Form.Item name="parent" label="Ota kategoriya" extra={`Kategoriyalar ko'pi bilan ${MAX_DEPTH} bosqich bo'ladi.`}>
             <TreeSelect allowClear treeData={parentTree} treeDefaultExpandAll placeholder="Yo'q (asosiy kategoriya)" />
           </Form.Item>
           <Form.Item name="order" label="Tartib raqami" extra="Shu o'ringa qo'yiladi, qolganlari pastga suriladi. Bo'sh qoldirsangiz oxiriga qo'shiladi.">
