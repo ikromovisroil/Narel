@@ -16,7 +16,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); }
+body { margin: 0; background: var(--bg); overflow-wrap: break-word; }  /* uzun so'zlar blokdan chiqib ketmasin */
 a { color: inherit; text-decoration: none; }
 a:hover { color: var(--primary); }
 button { font: inherit; cursor: pointer; }
@@ -98,6 +98,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
   line-height: 1; white-space: nowrap;
 }
 .cat-strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 12px; font-size: 14px; white-space: nowrap; }
+.cat-strip a { max-width: 240px; overflow: hidden; text-overflow: ellipsis; flex: none; }
 
 .mega { position: fixed; inset: 0; top: 140px; background: rgba(0,0,0,.35); z-index: 30; }
 .mega-inner {
@@ -110,13 +111,14 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .mega-right { padding: 20px 28px; }
 .mega-right h3 { cursor: pointer; margin-bottom: 16px; }
 .mega-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.mega-grid a { cursor: pointer; }
+.mega-grid a { cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
+.mega-left li > :first-child { min-width: 0; overflow-wrap: anywhere; }
 
 /* Bosh sahifa */
 .slider { position: relative; border-radius: var(--radius); overflow: hidden; background-size: cover; background-position: center; }
 .slide { min-height: 300px; padding: 48px; color: #fff; display: flex; flex-direction: column; justify-content: center; gap: 12px; align-items: flex-start; }
-.slide h2 { font-size: 38px; max-width: 600px; }
-.slide p { font-size: 18px; margin: 0; opacity: .9; }
+.slide h2 { font-size: 38px; max-width: 600px; overflow-wrap: anywhere; }
+.slide p { font-size: 18px; margin: 0; opacity: .9; overflow-wrap: anywhere; }
 .slide-0 { background: linear-gradient(120deg, #1f5eff, #6b3bff); }
 .slide-1 { background: linear-gradient(120deg, #ff6a00, #ff2f6d); }
 .slide-2 { background: linear-gradient(120deg, #0f9b8e, #1f5eff); }
@@ -137,7 +139,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .cat-chip { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 12px; padding: 8px 16px 8px 8px; font-size: 14px; font-weight: 500; max-width: 230px; transition: box-shadow .15s; }
 .cat-chip:hover { box-shadow: 0 2px 10px rgba(0,0,0,.08); color: var(--primary); }
 .cat-chip img { width: 40px; height: 40px; object-fit: contain; flex: none; }
-.cat-chip-name { line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cat-chip-name { overflow-wrap: anywhere; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cat-ico { width: 40px; height: 40px; flex: none; border-radius: 10px; background: #eef3ff; color: var(--primary); display: grid; place-items: center; font-weight: 700; font-size: 18px; }
 .hscroll.fade-l::before, .hscroll.fade-r::after { content: ""; position: absolute; top: 0; bottom: 0; width: 64px; pointer-events: none; z-index: 1; }
 .hscroll.fade-l::before { left: 0; background: linear-gradient(to right, var(--bg, #f3f4f8), transparent); }
@@ -148,7 +150,8 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .hs-arrow.right { right: -6px; }
 .brands { gap: 12px; }
 .brands .brand { flex: 0 0 140px; }
-.brand { background: #fff; border-radius: var(--radius); height: 72px; display: grid; place-items: center; font-weight: 700; font-size: 18px; color: var(--muted); }
+.brand { background: #fff; border-radius: var(--radius); height: 72px; display: grid; place-items: center; padding: 0 12px; text-align: center; font-weight: 700; font-size: 16px; line-height: 1.2; color: var(--muted); overflow: hidden; overflow-wrap: anywhere; }
+.brand > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .brand img { max-height: 40px; max-width: 80%; }
 
 /* Mahsulot kartochkasi */
@@ -182,7 +185,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .card-img { aspect-ratio: 1; display: grid; place-items: center; }
 .card-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .img-placeholder { width: 100%; height: 100%; display: grid; place-items: center; font-size: 48px; background: #f4f6fb; border-radius: 8px; aspect-ratio: 1; }
-.card-name { font-size: 14px; line-height: 1.35; height: 38px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.card-name { overflow-wrap: anywhere; font-size: 14px; line-height: 1.35; height: 38px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .card-price { display: grid; gap: 2px; margin-top: auto; }
 .card-price s { font-size: 13px; }
 .card-price strong { font-size: 18px; }
@@ -191,8 +194,9 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 /* Katalog */
 .crumbs { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
 .catalog { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start; }
-.filters { background: #fff; border-radius: var(--radius); padding: 16px; display: grid; gap: 20px; position: sticky; top: 150px; }
-.filter-block { display: grid; gap: 8px; }
+.filters { background: #fff; border-radius: var(--radius); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; position: sticky; top: 150px; }
+.filter-block { display: grid; gap: 8px; min-width: 0; }
+.filter-block a, .filter-block .check { min-width: 0; overflow-wrap: anywhere; }
 .filter-block h4 { font-size: 15px; }
 .price-inputs { display: flex; gap: 8px; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
@@ -204,7 +208,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .pager { display: flex; gap: 6px; justify-content: center; margin-top: 24px; }
 
 /* Mahsulot sahifasi */
-.product { display: grid; grid-template-columns: 1.1fr 1fr 340px; gap: 24px; margin-top: 16px; align-items: start; }
+.product { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 340px; gap: 24px; margin-top: 16px; align-items: start; }
 .gallery-main { background: #fff; border-radius: var(--radius); aspect-ratio: 1; display: grid; place-items: center; padding: 24px; }
 .gallery-main img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .thumbs { display: flex; gap: 8px; margin-top: 8px; }
@@ -213,8 +217,9 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .thumbs img { width: 100%; height: 100%; object-fit: contain; }
 .product-info { display: grid; gap: 12px; }
 .specs { margin: 0; display: grid; gap: 0; }
-.specs div { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+.specs div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border); }
 .specs dt { color: var(--muted); }
+.specs dt, .specs dd { min-width: 0; overflow-wrap: anywhere; }
 .specs dd { margin: 0; }
 .buy-box { background: #fff; border-radius: var(--radius); padding: 20px; display: grid; gap: 12px; position: sticky; top: 150px; }
 .old-price { display: flex; gap: 8px; align-items: center; color: var(--muted); }
@@ -228,7 +233,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 .tabs button.on { color: var(--text); border-color: var(--primary); }
 .tab-body { background: #fff; border-radius: 0 0 var(--radius) var(--radius); padding: 20px 24px; }
 /* To'liq kenglikda xususiyat nomi va qiymati bir-biridan uzoqlashib ketmasin */
-.tab-body .specs div { grid-template-columns: minmax(160px, 320px) 1fr; }
+.tab-body .specs div { grid-template-columns: minmax(0, 320px) minmax(0, 1fr); }
 .description { white-space: pre-line; line-height: 1.6; margin: 0; }
 
 /* Savat va buyurtma */
@@ -301,7 +306,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
 
 /* Moslashuvchan */
 @media (max-width: 1024px) {
-  .product { grid-template-columns: 1fr 1fr; }
+  .product { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .product .buy-box { grid-column: 1 / -1; position: static; }
   /* Planshetda savat: mahsulotlar to'liq kenglikda, jami pastida */
   .cart { grid-template-columns: 1fr; }
@@ -331,11 +336,11 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; width: 100%;
   .cat-chip { padding: 6px 12px 6px 6px; font-size: 13px; max-width: 180px; }
   .cat-chip img, .cat-ico { width: 34px; height: 34px; }
   .hs-arrow { display: none; }
-  .brands .brand { flex-basis: 110px; height: 60px; font-size: 15px; }
+  .brands .brand { flex-basis: 110px; height: 60px; font-size: 14px; padding: 0 8px; }
   .slide { padding: 28px; min-height: 220px; }
   .slide h2 { font-size: 26px; }
   .dots { left: 28px; }
-  .catalog, .cart, .product, .footer-grid, .form-row { grid-template-columns: 1fr; }
+  .catalog, .cart, .product, .footer-grid, .form-row { grid-template-columns: minmax(0, 1fr); }
   .filters, .buy-box { position: static; }
   .filters-toggle { display: flex; width: 100%; margin-bottom: 12px; }
   .filters { display: none; }

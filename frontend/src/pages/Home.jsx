@@ -132,7 +132,7 @@ export default function Home() {
           <HScroll className="brands" count={brands.length}>
             {brands.map(b => (
               <Link key={b.id} to={`/catalog?brand=${b.slug}`} className="brand">
-                {b.logo ? <img src={b.logo} alt={b.name} /> : b.name}
+                {b.logo ? <img src={b.logo} alt={b.name} /> : <span title={b.name}>{b.name}</span>}
               </Link>
             ))}
           </HScroll>
