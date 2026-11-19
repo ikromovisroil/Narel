@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import ProductCard from '../components/ProductCard'
@@ -49,6 +49,44 @@ function Section({ title, query, more }) {
   )
 }
 
+// Bir qatorli lenta: ko'p bo'lsa chap/o'ng tugmalar bilan suriladi (pastga ko'paymaydi)
+function HScroll({ className, count, children }) {
+  const ref = useRef(null)
+  const [edge, setEdge] = useState({ left: false, right: false })
+  const update = () => {
+    const el = ref.current
+    if (!el) return
+    setEdge({ left: el.scrollLeft > 2, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 })
+  }
+  useEffect(() => {
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [count])
+  const go = dir => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.8, behavior: 'smooth' })
+  return (
+    <div className={`hscroll${edge.left ? ' fade-l' : ''}${edge.right ? ' fade-r' : ''}`}>
+      {edge.left && <button className="hs-arrow left" onClick={() => go(-1)} aria-label="Chapga">‹</button>}
+      <div className={`hs-track ${className}`} ref={ref} onScroll={update}>{children}</div>
+      {edge.right && <button className="hs-arrow right" onClick={() => go(1)} aria-label="O'ngga">›</button>}
+    </div>
+  )
+}
+
+function CatSlider({ items }) {
+  if (!items.length) return null
+  return (
+    <HScroll className="cat-chips" count={items.length}>
+      {items.map(c => (
+        <Link key={c.id} to={`/catalog/${c.slug}`} className="cat-chip">
+          {c.icon ? <img src={c.icon} alt="" /> : <span className="cat-ico">{c.name[0]}</span>}
+          <span className="cat-chip-name">{c.name}</span>
+        </Link>
+      ))}
+    </HScroll>
+  )
+}
+
 export default function Home() {
   const { installmentMonths, storeInfo } = useStore()
   const freeDelivery = storeInfo && !Number(storeInfo.delivery_price)
@@ -81,14 +119,7 @@ export default function Home() {
 
       <section className="section">
         <div className="section-head"><h2>{t('Ommabop kategoriyalar')}</h2></div>
-        <div className="cat-tiles">
-          {categories.flatMap(c => c.children).slice(0, 12).map(c => (
-            <Link key={c.id} to={`/catalog/${c.slug}`} className="cat-tile">
-              {c.icon ? <img src={c.icon} alt="" /> : <span className="cat-ico">{c.name[0]}</span>}
-              {c.name}
-            </Link>
-          ))}
-        </div>
+        <CatSlider items={categories.flatMap(c => c.children)} />
       </section>
 
       <Section title={`🔥 ${t('Xit savdo')}`} query="is_hit=true" more="/catalog?is_hit=true" />
@@ -98,13 +129,13 @@ export default function Home() {
       {brands.length > 0 && (
         <section className="section">
           <div className="section-head"><h2>{t('Brendlar')}</h2></div>
-          <div className="brands">
+          <HScroll className="brands" count={brands.length}>
             {brands.map(b => (
               <Link key={b.id} to={`/catalog?brand=${b.slug}`} className="brand">
                 {b.logo ? <img src={b.logo} alt={b.name} /> : b.name}
               </Link>
             ))}
-          </div>
+          </HScroll>
         </section>
       )}
     </>
