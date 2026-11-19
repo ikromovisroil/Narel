@@ -64,7 +64,7 @@ class PaymentSettingsTests(APITestCase):
         self.assertEqual(r.status_code, 400)
         self.assertIn("payment_method", r.data)
         self.product.refresh_from_db()
-        self.assertEqual(self.product.stock, 9)  # rad etilgan buyurtma omborga tegmaydi
+        self.assertEqual(self.product.stock, 10)  # buyurtma berilganda qoldiq kamaymaydi (qabul qilinganda ayriladi)
 
     def test_admin_only(self):
         self.client.force_authenticate(self.client_user)

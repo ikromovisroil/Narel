@@ -256,22 +256,23 @@ class OrderSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         cart = validated_data.pop("cart")
         ids = [row["product"].pk for row in cart]
-        # Bir vaqtda ikki kishi oxirgi mahsulotni olmasligi uchun qatorlarni qulflaymiz
-        products = {p.pk: p for p in Product.objects.select_for_update().filter(pk__in=ids)}
+        # Qoldiq faqat tekshiriladi; ombordan buyurtma qabul qilinganda ayriladi (orders/stock.py)
+        products = {p.pk: p for p in Product.objects.filter(pk__in=ids)}
+        need = {}
+        for row in cart:
+            need[row["product"].pk] = need.get(row["product"].pk, 0) + row["quantity"]
 
         order = Order.objects.create(**validated_data)
         total = 0
         for row in cart:
             product = products[row["product"].pk]
             qty = row["quantity"]
-            if product.stock < qty:
+            if product.stock < need[product.pk]:
                 lang = get_lang(self.context.get("request"))
                 raise serializers.ValidationError({"cart": message(
                     self.context.get("request"), "stock",
                     localized(product, "name", lang), product.stock,
                 )})
-            product.stock -= qty
-            product.save(update_fields=["stock"])
             OrderItem.objects.create(order=order, product=product, price=product.price, quantity=qty)
             total += product.price * qty
 

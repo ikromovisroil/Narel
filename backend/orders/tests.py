@@ -501,11 +501,13 @@ class DjangoAdminOrderTests(APITestCase):
         self.web.force_login(self.root)
         cat = Category.objects.create(name="C", slug="c")
         self.p = Product.objects.create(category=cat, name="P", slug="p", price=100, stock=10)
-        self.order = Order.objects.create(user=self.root, full_name="A", phone="1", delivery_price=20, total=220)
+        # Qabul qilingan buyurtma: 2 dona qoldiqdan allaqachon ayrilgan (omborda 10 qolgan)
+        self.order = Order.objects.create(user=self.root, full_name="A", phone="1", delivery_price=20, total=220,
+                                          status="confirmed", stock_deducted=True)
         self.item = OrderItem.objects.create(order=self.order, product=self.p, price=100, quantity=2)
         self.url = f"/admin/orders/order/{self.order.pk}/change/"
 
-    def post(self, status="new", qty=2, delete=False, extra=None):
+    def post(self, status="confirmed", qty=2, delete=False, extra=None):
         data = {
             "user": self.root.pk, "full_name": "A", "phone": "1", "address": "", "note": "",
             "status": status, "payment_method": "cash", "delivery_method": "courier", "delivery_price": 20,
@@ -804,3 +806,101 @@ class GoogleMobileClientTests(APITestCase):
         self.assertEqual(self.login().status_code, 200)
         # Saytga faqat sayt Client ID'si beriladi
         self.assertEqual(self.client.get("/api/store-settings/").json()["google_client_id"], "web.apps.googleusercontent.com")
+
+
+class StockFlowTests(APITestCase):
+    """Ombor: buyurtma berilganda faqat tekshiriladi, qabul qilinganda ayriladi, bekor qilinsa qaytadi."""
+
+    def setUp(self):
+        StoreSettings.objects.update_or_create(pk=1, defaults={"delivery_enabled": True})
+        cat = Category.objects.create(name="C", slug="c")
+        self.p = Product.objects.create(name="P", slug="p", category=cat, price=100, stock=5)
+        self.customer = User.objects.create_user("client", password="x", first_name="Ali")
+        self.boss = User.objects.create_user("boss", password="x", is_staff=True, is_superuser=True)
+
+    def place(self, qty):
+        self.client.force_authenticate(self.customer)
+        r = self.client.post("/api/orders/", {
+            "phone": "+998901234567", "address": "Toshkent, Chilonzor 1", "delivery_method": "courier",
+            "payment_method": "cash", "cart": [{"product": self.p.id, "quantity": qty}],
+        }, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        return r.data["id"]
+
+    def set_status(self, order_id, status):
+        self.client.force_authenticate(self.boss)
+        body = {"status": status}
+        if status == "confirmed":  # kuryer buyurtmasini qabul qilishda sana majburiy
+            body["expected_date"] = str(timezone.localdate() + timedelta(days=2))
+        return self.client.patch(f"/api/admin/orders/{order_id}/", body, format="json")
+
+    def stock(self):
+        self.p.refresh_from_db()
+        return self.p.stock
+
+    def test_new_order_does_not_touch_stock(self):
+        oid = self.place(3)
+        self.assertEqual(self.stock(), 5)
+        self.assertFalse(Order.objects.get(pk=oid).stock_deducted)
+
+    def test_more_than_stock_rejected_at_checkout(self):
+        self.client.force_authenticate(self.customer)
+        r = self.client.post("/api/orders/", {
+            "phone": "+998901234567", "address": "Toshkent, Chilonzor 1", "delivery_method": "courier",
+            "payment_method": "cash", "cart": [{"product": self.p.id, "quantity": 6}],
+        }, format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("cart", r.data)
+
+    def test_accept_deducts_once_and_cancel_returns(self):
+        oid = self.place(3)
+        self.assertEqual(self.set_status(oid, "confirmed").status_code, 200)
+        self.assertEqual(self.stock(), 2)
+        self.assertEqual(self.set_status(oid, "shipped").status_code, 200)
+        self.assertEqual(self.set_status(oid, "delivered").status_code, 200)
+        self.assertEqual(self.stock(), 2)  # ikkinchi marta ayrilmaydi
+        self.assertEqual(self.set_status(oid, "cancelled").status_code, 200)
+        self.assertEqual(self.stock(), 5)
+
+    def test_cancel_new_order_keeps_stock(self):
+        oid = self.place(3)
+        self.assertEqual(self.set_status(oid, "cancelled").status_code, 200)
+        self.assertEqual(self.stock(), 5)  # ayrilmagan edi — qaytariladigan narsa yo'q
+
+    def test_accept_blocked_when_not_enough(self):
+        first, second = self.place(4), self.place(4)  # ikkalasi ham berildi (har biri 4 <= 5)
+        self.assertEqual(self.set_status(first, "confirmed").status_code, 200)
+        self.assertEqual(self.stock(), 1)
+        r = self.set_status(second, "confirmed")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Omborda yetarli emas", str(r.data))
+        self.assertEqual(self.stock(), 1)
+        o = Order.objects.get(pk=second)
+        self.assertEqual(o.status, "new")
+        self.assertFalse(o.stock_deducted)
+
+    def test_django_admin_action_and_form(self):
+        from django.test import Client
+        web = Client(HTTP_HOST="127.0.0.1")
+        web.force_login(User.objects.create_superuser("root", password="x"))
+        first, second = self.place(4), self.place(4)
+        web.post("/admin/orders/order/", {"action": "mark_confirmed", "_selected_action": [first, second]})
+        self.assertEqual(self.stock(), 1)  # bittasi qabul qilindi, ikkinchisiga yetmadi
+        statuses = sorted(Order.objects.filter(pk__in=[first, second]).values_list("status", flat=True))
+        self.assertEqual(statuses, ["confirmed", "new"])
+        # Formada: yangi buyurtmani 1 donaga kamaytirib, shu zahoti qabul qilish
+        new = Order.objects.get(status="new")
+        item = new.items.get()
+        r = web.post(f"/admin/orders/order/{new.pk}/change/", {
+            "user": self.customer.pk, "full_name": "A", "phone": "1", "address": "", "note": "",
+            "status": "confirmed", "payment_method": "cash", "delivery_method": "courier", "delivery_price": 0,
+            "expected_date": str(timezone.localdate() + timedelta(days=2)), "original_expected_date": "",
+            "delay_note": "", "pickup_branch": "", "pickup_point": "",
+            "items-TOTAL_FORMS": 1, "items-INITIAL_FORMS": 1, "items-MIN_NUM_FORMS": 0, "items-MAX_NUM_FORMS": 1000,
+            "items-0-id": item.pk, "items-0-order": new.pk, "items-0-product": self.p.pk,
+            "items-0-price": 100, "items-0-quantity": 1,
+        })
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(self.stock(), 0)  # yangi miqdor (1) ayrildi
+        new.refresh_from_db()
+        self.assertTrue(new.stock_deducted)

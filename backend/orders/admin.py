@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db import transaction
 from django.db.models import F, Sum
 from django.shortcuts import redirect
@@ -10,26 +10,33 @@ from catalog.models import Product
 from .models import (
     Branch, CustomerProfile, IntegrationSettings, Order, OrderItem, PhoneCode, SmsLog, StoreSettings,
 )
+from .stock import ACCEPTED, NotEnoughStock, apply_status
 
 CLOSED = (Order.Status.DELIVERED, Order.Status.CANCELLED)
 
 
 # ---------- Buyurtmalar ----------
-# React admin bilan bir xil qoidalar: bekor qilinganda mahsulot omborga qaytadi,
-# bekor qilingani qayta tiklanmaydi, qabul qilingandagi sana "va'da" sifatida saqlanadi.
+# React admin bilan bir xil qoidalar (orders/stock.py): qabul qilinganda qoldiqdan ayriladi,
+# bekor qilinganda omborga qaytadi, bekor qilingani qayta tiklanmaydi,
+# qabul qilingandagi sana "va'da" sifatida saqlanadi.
+
+def _deducted_in_db(order):
+    return bool(order.pk) and Order.objects.filter(pk=order.pk, stock_deducted=True).exists()
+
 
 class OrderItemFormSet(forms.BaseInlineFormSet):
     def clean(self):
         super().clean()
-        order = self.instance
-        if order.pk and order.status == Order.Status.CANCELLED:
+        order = self.instance  # holat — formadagi yangi qiymat
+        deducted = _deducted_in_db(order)
+        # Saqlangandan keyin qoldiqdan ayrilgan bo'ladimi (oldin ayrilgan yoki hozir qabul qilinmoqda)
+        if order.status == Order.Status.CANCELLED or not (deducted or order.status in ACCEPTED):
             return
         need = {}
         for form in self.forms:
             data = getattr(form, "cleaned_data", None) or {}
-            old = form.instance if form.instance.pk else None
-            if old:  # eski qator omborga qaytgan deb hisoblaymiz
-                old_db = OrderItem.objects.filter(pk=old.pk).values_list("product_id", "quantity").first()
+            if deducted and form.instance.pk:  # eski qator omborga qaytgan deb hisoblaymiz
+                old_db = OrderItem.objects.filter(pk=form.instance.pk).values_list("product_id", "quantity").first()
                 if old_db:
                     need[old_db[0]] = need.get(old_db[0], 0) - old_db[1]
             if data.get("DELETE") or not data.get("product"):
@@ -50,7 +57,7 @@ class OrderItemInline(admin.TabularInline):
     fields = ["product", "product_name", "price", "quantity", "subtotal_display"]
     readonly_fields = ["product_name", "subtotal_display"]
     autocomplete_fields = ["product"]
-    verbose_name_plural = "Mahsulotlar (o'zgartirilsa ombor qoldig'i va jami summa avtomatik qayta hisoblanadi)"
+    verbose_name_plural = "Mahsulotlar (qabul qilingan buyurtmada o'zgartirilsa ombor qoldig'i ham to'g'rilanadi)"
 
     @admin.display(description="Summa")
     def subtotal_display(self, obj):
@@ -110,17 +117,13 @@ class OrderAdmin(admin.ModelAdmin):
     def is_delayed_display(self, obj):
         return obj.is_delayed
 
-    @staticmethod
-    def _return_stock(order):
-        for item in order.items.all():
-            Product.objects.filter(pk=item.product_id).update(stock=F("stock") + item.quantity)
-
     @transaction.atomic
     def save_model(self, request, obj, form, change):
         old = Order.objects.filter(pk=obj.pk).first() if change else None
+        # Holat o'zgarishidagi ombor amali save_related da — yangi mahsulotlar ro'yxati saqlangandan keyin
+        request._order_old_status = old.status if old else None
         if old:
-            if obj.status == Order.Status.CANCELLED and old.status != Order.Status.CANCELLED:
-                self._return_stock(old)
+            obj.stock_deducted = old.stock_deducted
             accepting = old.status == Order.Status.NEW and obj.status in (Order.Status.CONFIRMED, Order.Status.SHIPPED)
             if accepting and obj.expected_date and not obj.original_expected_date:
                 obj.original_expected_date = obj.expected_date
@@ -129,9 +132,10 @@ class OrderAdmin(admin.ModelAdmin):
     @transaction.atomic
     def save_formset(self, request, form, formset, change):
         order = form.instance
-        if formset.model is not OrderItem or order.status == Order.Status.CANCELLED:
+        if formset.model is not OrderItem or not _deducted_in_db(order):
+            # Hali qoldiqdan ayrilmagan buyurtma — mahsulotlar o'zgarishi omborga tegmaydi
             return super().save_formset(request, form, formset, change)
-        # Ombor qoldig'ini o'zgarishga qarab to'g'rilash
+        # Qoldiqdan ayrilgan buyurtma: ombor qoldig'ini o'zgarishga qarab to'g'rilash
         before = {i.pk: (i.product_id, i.quantity) for i in OrderItem.objects.filter(order=order)}
         instances = formset.save(commit=False)
         for item in formset.deleted_objects:
@@ -153,18 +157,28 @@ class OrderAdmin(admin.ModelAdmin):
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
         order = form.instance
+        old_status = getattr(request, "_order_old_status", None)
+        if order.status != old_status:
+            try:
+                apply_status(order, order.status)
+            except NotEnoughStock as e:  # tekshiruvdan keyin boshqa buyurtma qoldiqni olib qo'ygan bo'lsa
+                Order.objects.filter(pk=order.pk).update(status=old_status or Order.Status.NEW)
+                messages.error(request, f"Holat o'zgarmadi. {e}")
         items = OrderItem.objects.filter(order=order).aggregate(s=Sum(F("price") * F("quantity")))["s"] or 0
         total = items + (order.delivery_price if order.delivery_method == Order.Delivery.COURIER else 0)
         Order.objects.filter(pk=order.pk).update(total=total)
 
     def _set_status(self, request, queryset, status):
-        done = 0
+        done, failed = 0, []
         with transaction.atomic():
             for order in queryset.select_related(None).select_for_update(of=("self",)):
                 if order.status == Order.Status.CANCELLED or order.status == status:
                     continue
-                if status == Order.Status.CANCELLED:
-                    self._return_stock(order)
+                try:
+                    apply_status(order, status)
+                except NotEnoughStock as e:
+                    failed.append(f"No {order.pk}: {e}")
+                    continue
                 order.status = status
                 if status in (Order.Status.CONFIRMED, Order.Status.SHIPPED) and order.expected_date \
                         and not order.original_expected_date:
@@ -172,6 +186,8 @@ class OrderAdmin(admin.ModelAdmin):
                 order.save(update_fields=["status", "original_expected_date"])
                 done += 1
         self.message_user(request, f"{done} ta buyurtma holati o'zgartirildi (bekor qilinganlar o'zgarmaydi)")
+        for text in failed:
+            self.message_user(request, text, level=messages.ERROR)
 
     @admin.action(description="Holat: Tasdiqlangan")
     def mark_confirmed(self, request, queryset):

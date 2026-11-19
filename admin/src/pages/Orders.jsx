@@ -53,7 +53,7 @@ function DeliveryDateBox({ order, canEdit, onSaved }) {
       <div className="date-box accept">
         <b>Buyurtmani qabul qilish</b>
         <Typography.Text type="secondary">
-          Mijozga yetkazib beriladigan taxminiy sanani tanlang — u "Buyurtmalarim"da ko'rinadi. Sana tanlanmasa qabul qilib bo'lmaydi.
+          Mijozga yetkazib beriladigan taxminiy sanani tanlang — u "Buyurtmalarim"da ko'rinadi. Sana tanlanmasa qabul qilib bo'lmaydi. Qabul qilinganda mahsulotlar ombor qoldig'idan ayriladi.
         </Typography.Text>
         <Space wrap>
           <DatePicker format="DD.MM.YYYY" placeholder="Yetkazish sanasi" value={date} onChange={setDate}
@@ -133,7 +133,7 @@ function OrderDrawer({ id, onClose, onChanged }) {
     <Drawer open={Boolean(id)} onClose={onClose} size={640} title={order ? `Buyurtma #${order.id}` : 'Yuklanmoqda...'}
             loading={!order}
             extra={order && !cancelled && canEdit && (
-              <Popconfirm title="Buyurtmani bekor qilasizmi?" description="Mahsulotlar omborga qaytariladi."
+              <Popconfirm title="Buyurtmani bekor qilasizmi?" description="Qabul qilingan bo'lsa, mahsulotlar omborga qaytariladi."
                           okText="Ha, bekor qilish" cancelText="Yo'q" okButtonProps={{ danger: true }}
                           onConfirm={() => setStatus('cancelled')}>
                 <Button danger disabled={saving}>Bekor qilish</Button>

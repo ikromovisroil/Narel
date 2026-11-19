@@ -276,7 +276,8 @@ Yangisidan eskisiga, 5 tadan (`?page=2` — keyingi 5 ta).
 | `pickup_branch` | Olib ketishda majburiy — filial `id` (`GET /api/store-settings/` → `branches`) |
 | `full_name`, `phone` | Ixtiyoriy. Yuborilmasa profildan olinadi; profilda ham bo'lmasa `400` |
 
-Narx, yetkazish narxi va jami summa serverda hisoblanadi. Mahsulotlar ombordan darhol ayriladi.
+Narx, yetkazish narxi va jami summa serverda hisoblanadi. Buyurtma berilganda ombor qoldig'i faqat tekshiriladi
+(yetmasa — 400), ombordan esa xodim buyurtmani qabul qilganda ayriladi.
 
 Javobdagi asosiy maydonlar:
 `id, status, status_display, total, delivery_price, expected_date, original_expected_date, delay_note, is_delayed, pickup_branch_info, items, created_at`.
@@ -395,7 +396,9 @@ Superuser hammasiga kira oladi. Ruxsat bo'lmasa `403`.
 - Kuryer buyurtmasini qabul qilishda (`new` → `confirmed`/`shipped`) `expected_date` majburiy; u "va'da qilingan sana" bo'lib saqlanadi.
 - Sana keyinga surilsa buyurtma "kechikkan" bo'ladi; `delay_note` — ixtiyoriy sabab (mijozga ko'rinadi).
 - O'tgan sanani tanlab bo'lmaydi; yakunlangan buyurtma sanasi o'zgarmaydi.
-- `cancelled` bo'lganda mahsulotlar omborga qaytadi. Bekor qilinganni qayta tiklab bo'lmaydi.
+- Qabul qilinganda (`confirmed`, `shipped` yoki `delivered` ga birinchi o'tishda) mahsulotlar ombor qoldig'idan ayriladi.
+  Qoldiq yetmasa — 400 ("Omborda yetarli emas: ..."), holat o'zgarmaydi.
+- `cancelled` bo'lganda — qoldiqdan ayrilgan bo'lsa — mahsulotlar omborga qaytadi. Bekor qilinganni qayta tiklab bo'lmaydi.
 
 ### O'chirish = yashirish
 

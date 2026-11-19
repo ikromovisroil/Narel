@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
-from django.db.models import F
 from rest_framework import serializers
 
 from catalog.models import Banner, Brand, Category, Product, ProductImage, ProductSpec
@@ -9,6 +8,7 @@ from catalog.ordering import place, renumber
 from catalog.utils import unique_slug
 from orders.models import Order
 from orders.serializers import OrderItemSerializer
+from orders.stock import NotEnoughStock, apply_status
 
 User = get_user_model()
 
@@ -258,10 +258,12 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def _update(self, instance, validated_data):
         new_status = validated_data.get("status")
-        if new_status == Order.Status.CANCELLED and instance.status != Order.Status.CANCELLED:
-            # Bekor qilinganda mahsulotlar omborga qaytadi
-            for item in instance.items.all():
-                Product.objects.filter(pk=item.product_id).update(stock=F("stock") + item.quantity)
+        if new_status and new_status != instance.status:
+            # Qabul qilinsa — qoldiqdan ayriladi, bekor qilinsa — omborga qaytadi
+            try:
+                apply_status(instance, new_status)
+            except NotEnoughStock as e:
+                raise serializers.ValidationError({"non_field_errors": [str(e)]})
         return super().update(instance, validated_data)
 
 

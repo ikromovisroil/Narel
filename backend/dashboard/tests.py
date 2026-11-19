@@ -191,7 +191,8 @@ class AdminApiTests(APITestCase):
 
     def test_cancel_order_restores_stock_and_stats(self):
         p = Product.objects.create(name="X", slug="x", category=self.cat, price=100, stock=5)
-        order = Order.objects.create(user=self.user, full_name="A", phone="1", address="B", total=300)
+        # Eski tartibda berilgan buyurtma: qoldiq buyurtmada ayrilgan (migratsiya stock_deducted=True qo'yadi)
+        order = Order.objects.create(user=self.user, full_name="A", phone="1", address="B", total=300, stock_deducted=True)
         OrderItem.objects.create(order=order, product=p, price=100, quantity=3)
 
         stats = self.client.get("/api/admin/stats/").data

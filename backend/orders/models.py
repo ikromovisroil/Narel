@@ -50,6 +50,8 @@ class Order(models.Model):
     )
     pickup_point = models.CharField("Olib ketish joyi", max_length=400, blank=True)
     total = models.DecimalField("Jami", max_digits=16, decimal_places=0, default=0)
+    # Qabul qilinganda qoldiqdan ayriladi, bekor qilinsa qaytadi (orders/stock.py)
+    stock_deducted = models.BooleanField("Ombordan ayrilgan", default=False, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
