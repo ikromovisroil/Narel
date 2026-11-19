@@ -3,10 +3,13 @@
 Shu yerda bir marta yoziladi: backend tekshiradi, admin panel esa
 /api/admin/image-rules/ orqali olib, foydalanuvchiga ko'rsatadi.
 """
+import uuid
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 FORMATS = {"JPEG": "JPG", "PNG": "PNG", "WEBP": "WEBP"}
+EXTENSIONS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
 MAX_SIDE = 4000
 
 RULES = {
@@ -106,4 +109,7 @@ def validate_image(file, rule_key):
     if abs(w / h - target) / target > RATIO_TOLERANCE:
         _fail(f"Rasm nisbati {rw}:{rh} bo'lishi kerak (sizniki {w}×{h} px, ya'ni {_ratio_text(w, h)}). "
               f"Tavsiya: {rec}.")
+    # Nom va kengaytma haqiqiy formatdan: PNG "rasm.pdf" nomi bilan yuklansa ham .png bo'lib saqlanadi
+    # (server faylni to'g'ri turda beradi, nomlar to'qnashmaydi)
+    file.name = f"{uuid.uuid4().hex}.{EXTENSIONS[image.format]}"
     return file

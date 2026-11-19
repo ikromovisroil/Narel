@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from PIL import Image
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APITransactionTestCase
 
 from catalog.models import Brand, Category, Product
 from orders.models import Order, OrderItem
@@ -323,3 +323,45 @@ class SoftDeleteTests(APITestCase):
         self.assertEqual(cats["Choynaklar"], 0)
         self.client.force_authenticate(self.customer)
         self.assertEqual(self.client.get("/api/favorites/").data, [])
+
+
+class RealTransactionTests(APITransactionTestCase):
+    """Oddiy testlar tranzaksiya ichida ishlaydi va "select_for_update tranzaksiyasiz" kabi xatolarni
+    yashiradi (serverda 500 bo'lgan). Bu yerda so'rovlar haqiqiy serverdagidek — tranzaksiyasiz."""
+
+    def setUp(self):
+        self.root = User.objects.create_superuser("root", password="x")
+        self.client.force_authenticate(self.root)
+
+    def test_delete_category_and_banner(self):
+        top = Category.objects.create(name="A", slug="a")
+        child = Category.objects.create(name="B", slug="b", parent=top)
+        Category.objects.create(name="C", slug="c", parent=top)
+        self.assertEqual(self.client.delete(f"/api/admin/categories/{child.id}/").status_code, 204)
+        self.assertEqual(self.client.delete(f"/api/admin/categories/{top.id}/").status_code, 204)
+        b1 = self.client.post("/api/admin/banners/", {"title": "X"}, format="json").data
+        self.client.post("/api/admin/banners/", {"title": "Y"}, format="json")
+        self.assertEqual(self.client.delete(f"/api/admin/banners/{b1['id']}/").status_code, 204)
+
+    def test_reorder_category(self):
+        top = Category.objects.create(name="A", slug="a", order=1)
+        Category.objects.create(name="B", slug="b", order=2)
+        r = self.client.patch(f"/api/admin/categories/{top.id}/", {"order": 2}, format="json")
+        self.assertEqual(r.status_code, 200)
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class UploadNameTests(APITestCase):
+    def test_uploaded_file_gets_real_extension(self):
+        root = User.objects.create_superuser("root", password="x")
+        self.client.force_authenticate(root)
+        cat = Category.objects.create(name="A", slug="a")
+        r = self.client.post(f"/api/admin/categories/{cat.id}/upload/",
+                             {"file": png("rasm.pdf", size=(300, 300))}, format="multipart")
+        self.assertEqual(r.status_code, 200, r.data)
+        cat.refresh_from_db()
+        self.assertTrue(cat.icon.name.endswith(".png"), cat.icon.name)
+        self.assertNotIn("pdf", cat.icon.name)
+
+    def test_admin_root_list_hidden(self):
+        self.assertEqual(self.client.get("/api/admin/").status_code, 404)

@@ -10,6 +10,7 @@ from orders.integrations_views import AdminIntegrationsView, SmsCheckView, SmsTe
 from . import views
 
 router = DefaultRouter()
+router.include_root_view = False  # /api/admin/ — manzillar ro'yxati ochiq ko'rinmasin
 router.register("categories", views.CategoryViewSet, basename="admin-category")
 router.register("brands", views.BrandViewSet, basename="admin-brand")
 router.register("banners", views.BannerViewSet, basename="admin-banner")
