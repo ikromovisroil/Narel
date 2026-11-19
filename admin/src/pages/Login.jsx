@@ -3,7 +3,7 @@ import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { errorText } from '../api'
 import { useAuth } from '../auth'
-import { LogoMark } from '../LogoMark'
+import { LogoMark, LogoText } from '../LogoMark'
 
 export default function Login() {
   const { login } = useAuth()
@@ -25,7 +25,7 @@ export default function Login() {
     <div className="login-wrap">
       <Card className="login-card">
         <Typography.Title level={3} style={{ textAlign: 'center', marginTop: 0 }}>
-          <span className="login-logo"><LogoMark size={40} /> Rendershop</span>{' '}
+          <span className="login-logo"><LogoMark size={40} /> <LogoText /></span>{' '}
           <small style={{ fontWeight: 400, color: '#999' }}>admin</small>
         </Typography.Title>
         <Form layout="vertical" onFinish={submit} requiredMark={false}>
