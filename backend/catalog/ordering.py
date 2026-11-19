@@ -11,6 +11,7 @@ def category_scope(model, parent_id):
     return model.objects.filter(parent_id=parent_id)
 
 
+@transaction.atomic  # select_for_update tranzaksiyasiz ishlamaydi (o'chirishda 500 xato bo'lardi)
 def renumber(scope_qs, exclude_pk=None):
     """Guruhdagi raqamlarni 1..n qilib zichlaydi (tartibni saqlagan holda)."""
     qs = scope_qs.exclude(pk=exclude_pk) if exclude_pk else scope_qs

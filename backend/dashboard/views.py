@@ -3,6 +3,7 @@ from staff.models import has_section
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.deletion import ProtectedError
 from django.db.models.functions import Coalesce, TruncDate
@@ -85,9 +86,9 @@ class CategoryViewSet(AdminMixin, UploadMixin, viewsets.ModelViewSet):
             return Response({"detail": f"Bu kategoriyada (yoki ichki kategoriyalarida) {left} ta mahsulot bor. "
                                        "Avval ularni boshqa kategoriyaga o'tkazing yoki o'chiring."},
                             status=status.HTTP_400_BAD_REQUEST)
-        now = timezone.now()
-        Category.objects.filter(pk__in=[c.pk for c in family]).update(deleted_at=now)
-        renumber(Category.objects.alive().filter(parent_id=instance.parent_id))
+        with transaction.atomic():
+            Category.objects.filter(pk__in=[c.pk for c in family]).update(deleted_at=timezone.now())
+            renumber(Category.objects.alive().filter(parent_id=instance.parent_id))
         return Response(status=status.HTTP_204_NO_CONTENT)
     queryset = Category.objects.alive().annotate(
         products_count=Count("products", filter=Q(products__deleted_at__isnull=True))
