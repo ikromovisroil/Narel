@@ -1,4 +1,4 @@
-// Narel belgisi: monitor ichida "N". dark — to'q fon (footer) uchun yorug' variant
+// Rendershop belgisi: monitor ichida "N". dark — to'q fon (footer) uchun yorug' variant
 export function LogoMark({ size = 36, dark = false }) {
   const body = dark ? '#ffffff' : '#0f1b2d'
   const letter = dark ? '#0f1b2d' : '#ffffff'

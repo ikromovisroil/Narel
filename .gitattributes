@@ -1,0 +1,3 @@
+# Linux konteynerda ishlaydigan skriptlar har doim LF bo'lsin (Windows'da ham)
+*.sh text eol=lf
+deploy/nginx/*.template text eol=lf

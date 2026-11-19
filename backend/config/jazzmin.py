@@ -5,16 +5,16 @@ SITE_URL = os.getenv("SITE_URL", "http://localhost:5173").rstrip("/")
 ADMIN_PANEL_URL = os.getenv("ADMIN_PANEL_URL", "http://localhost:5174").rstrip("/")
 
 JAZZMIN_SETTINGS = {
-    "site_title": "Narel admin",
-    "site_header": "Narel",
-    "site_brand": "Narel",
+    "site_title": "Rendershop admin",
+    "site_header": "Rendershop",
+    "site_brand": "Rendershop",
     "site_logo": "narel/logo.svg",
     "login_logo": "narel/logo-dark.svg",
     "login_logo_dark": "narel/logo.svg",
     "site_logo_classes": "img-fluid",
     "site_icon": "narel/logo-dark.svg",
-    "welcome_sign": "Narel — texnik boshqaruv paneli",
-    "copyright": "Narel · Dasturchi: Ikromov.I",
+    "welcome_sign": "Rendershop — texnik boshqaruv paneli",
+    "copyright": "Rendershop · Dasturchi: Ikromov.I",
     # Yuqoridagi qidiruv
     "search_model": ["catalog.Product", "orders.Order", "auth.User"],
     "user_avatar": None,

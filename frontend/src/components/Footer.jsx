@@ -23,7 +23,7 @@ export default function Footer() {
         <div>
           <h4>{t("Bog'lanish")}</h4>
           {storeInfo && <a href={`tel:${storeInfo.phone.replace(/[^\d+]/g, '')}`}>{storeInfo.phone}</a>}
-          <span>info@narel.uz</span>
+          <span>info@rendershop.uz</span>
           {storeInfo && <span className="muted">{storeInfo.address}</span>}
           {storeInfo?.working_hours && <span className="muted">{storeInfo.working_hours}</span>}
         </div>

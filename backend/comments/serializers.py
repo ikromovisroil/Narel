@@ -6,12 +6,12 @@ from .models import Comment
 
 
 def author_name(user, request=None):
-    """Ism-familiya; bo'lmasa "Xaridor" (xodim bo'lsa "Narel"). Login (mijozda — telefon raqami) hech qachon ko'rinmaydi."""
+    """Ism-familiya; bo'lmasa "Xaridor" (xodim bo'lsa "Rendershop"). Login (mijozda — telefon raqami) hech qachon ko'rinmaydi."""
     name = f"{user.first_name} {user.last_name}".strip()
     if name:
         return name
     if user.is_staff:
-        return "Narel"
+        return "Rendershop"
     return "Покупатель" if get_lang(request) == "ru" else "Xaridor"
 
 

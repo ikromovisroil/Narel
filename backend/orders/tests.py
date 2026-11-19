@@ -620,7 +620,7 @@ class IntegrationSettingsTests(APITestCase):
     LOGIN = {"/auth/login": {"message": "token_generated", "data": {"token": "T"}}}
 
     def configure(self, **extra):
-        body = {"sms_enabled": True, "eskiz_email": "shop@narel.uz", "eskiz_password": "secret", **extra}
+        body = {"sms_enabled": True, "eskiz_email": "shop@rendershop.uz", "eskiz_password": "secret", **extra}
         return self.client.patch(self.URL, body, format="json")
 
     def test_password_never_returned_and_kept_when_blank(self):
@@ -628,18 +628,18 @@ class IntegrationSettingsTests(APITestCase):
         self.assertEqual(r.status_code, 200)
         self.assertNotIn("eskiz_password", r.data)
         self.assertTrue(r.data["has_password"])
-        self.client.patch(self.URL, {"eskiz_password": "", "eskiz_from": "Narel"}, format="json")
+        self.client.patch(self.URL, {"eskiz_password": "", "eskiz_from": "Rendershop"}, format="json")
         from .models import IntegrationSettings
         s = IntegrationSettings.load()
-        self.assertEqual((s.eskiz_password, s.eskiz_from), ("secret", "Narel"))
+        self.assertEqual((s.eskiz_password, s.eskiz_from), ("secret", "Rendershop"))
         self.assertIn("sms", self.client.get(self.URL).data["guides"])
 
     def test_validation(self):
-        r = self.client.patch(self.URL, {"google_client_id": "abc", "sms_otp_domain": "https://narel.uz/"}, format="json")
+        r = self.client.patch(self.URL, {"google_client_id": "abc", "sms_otp_domain": "https://rendershop.uz/"}, format="json")
         self.assertIn("google_client_id", r.data)
-        r = self.client.patch(self.URL, {"sms_otp_domain": "https://narel.uz/"}, format="json")
-        self.assertEqual(r.data["sms_otp_domain"], "narel.uz")
-        self.assertIn("@narel.uz #123456", r.data["sms_templates"][0]["text"])
+        r = self.client.patch(self.URL, {"sms_otp_domain": "https://rendershop.uz/"}, format="json")
+        self.assertEqual(r.data["sms_otp_domain"], "rendershop.uz")
+        self.assertIn("@rendershop.uz #123456", r.data["sms_templates"][0]["text"])
 
     def test_needs_settings_permission(self):
         staff = User.objects.create_user("op", password="x", is_staff=True)
@@ -649,7 +649,7 @@ class IntegrationSettingsTests(APITestCase):
     @override_settings(DEBUG=False)
     def test_send_logs_and_hides_code(self):
         from .models import SmsLog
-        self.configure(sms_otp_domain="narel.uz")
+        self.configure(sms_otp_domain="rendershop.uz")
         mock, calls = self.eskiz({**self.LOGIN, "/message/sms/send": {"id": "abc", "status": "waiting"}})
         with mock:
             r = self.client.post("/api/auth/code/send/", {"phone": "+998 90 111 22 33", "agree": True}, format="json")
@@ -657,7 +657,7 @@ class IntegrationSettingsTests(APITestCase):
         self.assertNotIn("debug_code", r.data)
         sent = calls[-1][1]
         self.assertEqual(sent["mobile_phone"], "998901112233")
-        self.assertRegex(sent["message"], r"kirish kodi (\d{6})\. Hech kimga bermang\.\n\n@narel\.uz #\1$")
+        self.assertRegex(sent["message"], r"kirish kodi (\d{6})\. Hech kimga bermang\.\n\n@rendershop.uz #\1$")
         log = SmsLog.objects.get()
         self.assertEqual((log.status, log.provider_id), ("sent", "abc"))
         self.assertIn("******", log.text)

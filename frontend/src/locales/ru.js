@@ -2,7 +2,7 @@
 // Yangi matn qo'shsangiz, shu yerga ham ruschasini yozing; yozilmasa o'zbekcha ko'rinadi.
 export default {
   // Umumiy
-  "Narel — elektronika va maishiy texnika": 'Narel — электроника и бытовая техника',
+  "Rendershop — elektronika va maishiy texnika": 'Rendershop — электроника и бытовая техника',
   "so'm": 'сум',
   "Server bilan bog'lanib bo'lmadi": 'Не удалось связаться с сервером',
   'Yuklanmoqda...': 'Загрузка...',

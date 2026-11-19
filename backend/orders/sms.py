@@ -12,7 +12,7 @@ import urllib.request
 from django.conf import settings
 from django.core.cache import cache
 
-log = logging.getLogger("narel.sms")
+log = logging.getLogger("rendershop.sms")
 ESKIZ = "https://notify.eskiz.uz/api"
 TIMEOUT = 15
 BALANCE_CACHE = 10 * 60  # balans 10 daqiqada bir so'raladi

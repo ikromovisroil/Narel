@@ -1,0 +1,107 @@
+# Rendershop — serverda ishga tushirish (to'liq yo'riqnoma: docs/DEPLOY.md):
+#   cp .env.prod.example .env            (to'ldiring)
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   ./deploy/ssl.sh                      (birinchi marta — SSL sertifikat)
+# Bitta domen: /  — do'kon, /seller/ — admin panel, /admin/ — Django admin, /api/ — API.
+# Servislar: db (PostgreSQL), backend (Django + Gunicorn), nginx (do'kon, admin, HTTPS), certbot, backup.
+name: rendershop
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-shop}
+      POSTGRES_USER: ${POSTGRES_USER:-shop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env da bo'lishi kerak}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    image: rendershop-backend:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DEBUG: "False"
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      NUM_PROXIES: "1"
+      ALLOWED_HOSTS: ${DOMAIN},www.${DOMAIN}
+      CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
+      CORS_ALLOWED_ORIGINS: https://${DOMAIN}
+      SITE_URL: https://${DOMAIN}
+      ADMIN_PANEL_URL: https://${DOMAIN}/seller
+    volumes:
+      - media:/app/media
+      - static:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    build:
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    image: rendershop-nginx:latest
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+      DJANGO_ADMIN_URL: ${DJANGO_ADMIN_URL:-admin}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - media:/srv/media:ro
+      - static:/srv/static:ro
+      - certs:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+    depends_on:
+      - backend
+
+  # SSL sertifikatini kuniga 2 marta tekshirib, muddati yaqinlashsa yangilaydi (nginx 6 soatda o'zi oladi)
+  certbot:
+    image: certbot/certbot:v3.1.0
+    restart: unless-stopped
+    volumes:
+      - certs:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint: ["/bin/sh", "-c", "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"]
+
+  # Ma'lumotlar bazasining kundalik nusxasi: ./backups/shop-YYYY-MM-DD.sql.gz, oxirgi 14 kun saqlanadi
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB:-shop}
+      PGUSER: ${POSTGRES_USER:-shop}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Tashkent
+    volumes:
+      - ./backups:/backups
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        trap exit TERM
+        while :; do
+          pg_dump --no-owner | gzip > /backups/shop-$$(date +%F).sql.gz && echo "backup: $$(date +%F) tayyor"
+          find /backups -name 'shop-*.sql.gz' -mtime +14 -delete
+          sleep 24h & wait $$!
+        done
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  media:
+  static:
+  certs:
+  certbot-www:

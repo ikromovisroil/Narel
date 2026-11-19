@@ -28,8 +28,8 @@ router.register("products", ProductViewSet)
 router.register("orders", OrderViewSet, basename="order")
 router.register("payment-methods", PublicPaymentMethodViewSet, basename="payment-method")
 
-admin.site.site_header = "Narel — texnik boshqaruv"
-admin.site.site_title = "Narel admin"
+admin.site.site_header = "Rendershop — texnik boshqaruv"
+admin.site.site_title = "Rendershop admin"
 admin.site.index_title = "Barcha ma'lumotlar"
 
 # API yo'llari. Bir xil ro'yxat ikki joyda: /api/ (sayt va admin panel) va /api/v1/ (mobil ilovalar).

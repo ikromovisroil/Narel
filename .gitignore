@@ -16,3 +16,9 @@ frontend/dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Server (prod) sozlamalari va ma'lumotlar bazasi nusxalari
+/.env
+backups/
+admin/node_modules/
+admin/dist/

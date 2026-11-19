@@ -18,7 +18,7 @@ createRoot(document.getElementById('root')).render(
       theme={{ token: { colorPrimary: '#1f5eff', borderRadius: 8, fontFamily: 'Inter, system-ui, sans-serif' } }}
     >
       <AntApp>
-        <BrowserRouter>
+        <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <AuthProvider>
             <App />
           </AuthProvider>

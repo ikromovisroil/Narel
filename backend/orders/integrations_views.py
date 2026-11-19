@@ -32,7 +32,7 @@ class IntegrationSettingsSerializer(serializers.ModelSerializer):
     def validate_sms_otp_domain(self, value):
         value = clean_domain(value)
         if value and ("/" in value or " " in value or "." not in value):
-            raise serializers.ValidationError("Faqat domen: masalan, narel.uz")
+            raise serializers.ValidationError("Faqat domen: masalan, rendershop.uz")
         return value
 
     def validate_eskiz_from(self, value):

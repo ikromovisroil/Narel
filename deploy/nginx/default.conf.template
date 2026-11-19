@@ -1,0 +1,130 @@
+# Rendershop nginx — bitta domen. ${DOMAIN}, ${DJANGO_ADMIN_URL} — .env dan (nginx obrazi o'zi qo'yadi).
+#   https://${DOMAIN}/                       — do'kon (frontend)
+#   https://${DOMAIN}/seller/                — admin panel (admin)
+#   https://${DOMAIN}/${DJANGO_ADMIN_URL}/   — Django admin
+#   https://${DOMAIN}/api/                   — API
+#   https://www.${DOMAIN}                    — ${DOMAIN} ga yo'naltiriladi
+
+upstream django {
+    server backend:8000;
+}
+
+server_tokens off;
+client_max_body_size 20m;
+
+gzip on;
+gzip_comp_level 5;
+gzip_min_length 1024;
+gzip_types text/plain text/css application/json application/javascript text/xml application/xml image/svg+xml;
+
+# ---------- 80: Let's Encrypt tekshiruvi, qolgani HTTPS ga ----------
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN} www.${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://${DOMAIN}$request_uri;
+    }
+}
+
+# ---------- www → asosiy domen ----------
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name www.${DOMAIN};
+
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+
+    return 301 https://${DOMAIN}$request_uri;
+}
+
+# ---------- Asosiy domen ----------
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+
+    # Diqqat: location ichida add_header yozilsa, bular u yerda ishlamay qoladi — shuning uchun keshlash "expires" bilan
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+
+    # ---- Django: API va Django admin ----
+    location /api/ {
+        proxy_pass http://django;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    location /${DJANGO_ADMIN_URL}/ {
+        proxy_pass http://django;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ---- Rasmlar va Django statik fayllari (diskdan to'g'ridan-to'g'ri) ----
+    location /media/ {
+        alias /srv/media/;
+        expires 30d;
+        access_log off;
+    }
+
+    location /static/ {
+        alias /srv/static/;
+        expires 30d;
+        access_log off;
+    }
+
+    # ---- Admin panel: /seller/ ----
+    location = /seller {
+        return 301 /seller/;
+    }
+
+    location /seller/assets/ {
+        root /usr/share/nginx;
+        expires 1y;
+        try_files $uri =404;
+    }
+
+    location /seller/ {
+        root /usr/share/nginx;
+        expires -1;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy same-origin always;
+        add_header X-Frame-Options DENY always;
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        try_files $uri /seller/index.html;
+    }
+
+    # ---- Do'kon ----
+    root /usr/share/nginx/shop;
+
+    # Build fayllari nomida xesh bor — uzoq keshlanadi
+    location /assets/ {
+        expires 1y;
+        try_files $uri =404;
+    }
+
+    # React sahifalari (/product/..., /cart) — hammasi index.html
+    location / {
+        expires -1;
+        try_files $uri /index.html;
+    }
+}

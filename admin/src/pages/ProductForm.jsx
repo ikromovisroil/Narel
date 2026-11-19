@@ -5,7 +5,7 @@ import {
 } from 'antd'
 import { DeleteOutlined, HolderOutlined, PlusOutlined } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, applyFormErrors, errorText, upload } from '../api'
+import { api, applyFormErrors, errorText, upload, SHOP_URL } from '../api'
 import ImageUpload from '../components/ImageUpload'
 import { acceptFor, checkImage, useImageRule } from '../imageRules'
 import { formatPrice, moneyInput } from '../utils'
@@ -144,7 +144,7 @@ export default function ProductForm() {
       <div className="page-head">
         <Typography.Title level={3} style={{ margin: 0 }}>{isNew ? 'Yangi mahsulot' : product.name}</Typography.Title>
         <Space>
-          {!isNew && <Button href={`http://localhost:5173/product/${product.slug}`} target="_blank">Saytda ko'rish ↗</Button>}
+          {!isNew && <Button href={`${SHOP_URL}/product/${product.slug}`} target="_blank">Saytda ko'rish ↗</Button>}
           {canEdit && <Button type="primary" loading={saving} onClick={() => form.submit()}>Saqlash</Button>}
         </Space>
       </div>

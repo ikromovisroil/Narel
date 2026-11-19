@@ -25,7 +25,7 @@ export default function Login() {
     <div className="login-wrap">
       <Card className="login-card">
         <Typography.Title level={3} style={{ textAlign: 'center', marginTop: 0 }}>
-          <span className="login-logo"><LogoMark size={40} /> Narel</span>{' '}
+          <span className="login-logo"><LogoMark size={40} /> Rendershop</span>{' '}
           <small style={{ fontWeight: 400, color: '#999' }}>admin</small>
         </Typography.Title>
         <Form layout="vertical" onFinish={submit} requiredMark={false}>

@@ -1,4 +1,4 @@
-# Narel API hujjati
+# Rendershop API hujjati
 
 Backend: Django + Django REST Framework. Barcha javoblar JSON.
 
@@ -234,7 +234,7 @@ O'xshash 10 ta mahsulot (avval shu kategoriya va brend, keyin narxi yaqini; faqa
 ### `GET /api/products/<slug>/comments/`
 
 Yashirilmagan izohlar va ularga javoblar, 10 tadan. Javobda `summary` ham bor: o'rtacha baho (`rating`) va baholar soni (`ratings_count`).
-Muallif nomi: ism-familiya; bo'lmasa "Xaridor" (do'kon javobi — "Narel"). Telefon yoki login hech qachon ko'rinmaydi.
+Muallif nomi: ism-familiya; bo'lmasa "Xaridor" (do'kon javobi — "Rendershop"). Telefon yoki login hech qachon ko'rinmaydi.
 
 ### `POST /api/products/<slug>/comments/` — izoh yoki javob yozish (kirgan foydalanuvchi)
 

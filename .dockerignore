@@ -1,0 +1,8 @@
+# nginx obrazi uchun (kontekst — loyiha ildizi): faqat frontend, admin va deploy/nginx kerak
+.git
+backend
+backups
+**/node_modules
+**/dist
+.env
+*.log

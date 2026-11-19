@@ -1,4 +1,7 @@
 // Admin panel uchun backend bilan ishlash
+
+// Do'kon sayti: lokal — Vite (5173), serverda — o'sha domen (admin panel /seller/ da)
+export const SHOP_URL = import.meta.env.DEV ? 'http://localhost:5173' : ''
 const tokens = {
   get access() { return localStorage.getItem('access') },
   get refresh() { return localStorage.getItem('refresh') },

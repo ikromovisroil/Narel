@@ -6,7 +6,7 @@ import { CheckCircleFilled, DeleteOutlined, LinkOutlined, MessageOutlined, ShopF
 import dayjs from 'dayjs'
 import { useSearchParams } from 'react-router-dom'
 import { scrollToTable } from '../utils'
-import { api, errorText } from '../api'
+import { api, errorText, SHOP_URL } from '../api'
 import { usePerm } from '../auth'
 
 // Izohga do'kon nomidan javob: suhbat ko'rinadi, javob saytda "Do'kon" belgisi bilan chiqadi
@@ -53,7 +53,7 @@ function ReplyModal({ comment, onClose, onSent }) {
         <>
           <Typography.Text type="secondary">
             <LinkOutlined />{' '}
-            <a href={`http://localhost:5173/product/${comment.product_slug}`} target="_blank" rel="noreferrer">{comment.product_name}</a>
+            <a href={`${SHOP_URL}/product/${comment.product_slug}`} target="_blank" rel="noreferrer">{comment.product_name}</a>
           </Typography.Text>
           <div className="reply-thread">
             <div className="reply-msg">
@@ -186,7 +186,7 @@ export default function Comments() {
           {
             title: 'Mahsulot', key: 'product', width: 200,
             render: (_, c) => (
-              <a href={`http://localhost:5173/product/${c.product_slug}`} target="_blank" rel="noreferrer">
+              <a href={`${SHOP_URL}/product/${c.product_slug}`} target="_blank" rel="noreferrer">
                 <LinkOutlined /> {c.product_name}
               </a>
             ),

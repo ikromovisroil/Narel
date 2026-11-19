@@ -5,7 +5,7 @@ import re
 
 from orders.security import client_ip
 
-log = logging.getLogger("narel.audit")
+log = logging.getLogger("rendershop.audit")
 
 # Kalit nomida shular bo'lsa qiymati yashiriladi
 SECRET_WORDS = ("password", "parol", "secret", "token", "refresh", "access", "credential", "code", "key", "otp")

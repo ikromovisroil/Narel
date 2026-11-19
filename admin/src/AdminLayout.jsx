@@ -4,7 +4,7 @@ import {
   LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SendOutlined, UserOutlined,
 } from '@ant-design/icons'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { api } from './api'
+import { api, SHOP_URL } from './api'
 import { useAuth } from './auth'
 import { MENU } from './menu'
 import { LogoMark } from './LogoMark'
@@ -52,7 +52,7 @@ export default function AdminLayout() {
       >
         <div className="logo">
           <LogoMark size={30} dark />
-          {!collapsed && <><span>Narel</span><small>admin</small></>}
+          {!collapsed && <><span>Rendershop</span><small>admin</small></>}
         </div>
         <Menu
           theme="dark" mode="inline" selectedKeys={[selected]} items={items}
@@ -69,7 +69,7 @@ export default function AdminLayout() {
           <Button type="text" onClick={() => setCollapsed(c => !c)}
                   icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} />
           <div style={{ flex: 1 }} />
-          <Button href="http://localhost:5173" target="_blank" type="link">Saytni ochish ↗</Button>
+          <Button href={SHOP_URL + "/"} target="_blank" type="link">Saytni ochish ↗</Button>
           <Dropdown menu={{ items: [{ key: 'logout', icon: <LogoutOutlined />, label: 'Chiqish', onClick: logout }] }}>
             <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Avatar icon={<UserOutlined />} style={{ background: '#1f5eff' }} />

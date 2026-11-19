@@ -52,8 +52,8 @@ def google_client_ids():
 
 
 SMS_TEXTS = {
-    "uz": "Narel: kirish kodi {0}. Hech kimga bermang.",
-    "ru": "Narel: код для входа {0}. Никому не сообщайте.",
+    "uz": "Rendershop: kirish kodi {0}. Hech kimga bermang.",
+    "ru": "Rendershop: код для входа {0}. Никому не сообщайте.",
 }
 
 
@@ -92,17 +92,17 @@ GUIDES = {
             ],
             "documents": [],
             "note": "Shartnoma uchun kerakli hujjatlar va narxlarni Eskiz menejeri aytadi. "
-                    "Jo'natuvchi nomini (\"4546\" o'rniga \"Narel\") ro'yxatdan o'tkazish alohida xizmat, Eskiz orqali qilinadi.",
+                    "Jo'natuvchi nomini (\"4546\" o'rniga \"Rendershop\") ro'yxatdan o'tkazish alohida xizmat, Eskiz orqali qilinadi.",
         },
     },
     "google": {
         "title": "Google orqali kirish",
         "about": "Mijoz saytga Google hisobi bilan bir tugmada kiradi. Bepul. Client ID bo'lmasa tugma saytda ko'rinmaydi.",
         "where": [
-            "console.cloud.google.com ga kiring va yangi loyiha yarating (masalan, \"Narel\").",
+            "console.cloud.google.com ga kiring va yangi loyiha yarating (masalan, \"Rendershop\").",
             "\"APIs & Services\" → \"OAuth consent screen\": ilova nomi, email va sayt manzilini to'ldiring, \"External\" ni tanlang.",
             "\"APIs & Services\" → \"Credentials\" → \"Create credentials\" → \"OAuth client ID\", turi \"Web application\".",
-            "\"Authorized JavaScript origins\" ga sayt manzilini qo'shing (masalan, https://narel.uz).",
+            "\"Authorized JavaScript origins\" ga sayt manzilini qo'shing (masalan, https://rendershop.uz).",
             "Yaratilgan \"Client ID\" ni (…apps.googleusercontent.com bilan tugaydi) shu yerga kiriting. Client secret kerak emas.",
             "Mobil ilova bo'lsa: Credentials'da \"iOS\" va \"Android\" turidagi Client ID'lar ham yarating "
             "(Android uchun ilova paketi nomi va SHA-1 kaliti kerak — ularni mobil dasturchi beradi) va pastdagi maydonlarga kiriting.",

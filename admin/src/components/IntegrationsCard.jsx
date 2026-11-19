@@ -145,7 +145,7 @@ function SmsDrawer({ open, data, onClose, onSaved }) {
         <Row gutter={12}>
           <Col xs={24} sm={12}>
             <Form.Item name="eskiz_email" label="Login (email)" extra="my.eskiz.uz ga kiradigan email">
-              <Input autoComplete="off" placeholder="shop@narel.uz" />
+              <Input autoComplete="off" placeholder="shop@rendershop.uz" />
             </Form.Item>
           </Col>
           <Col xs={24} sm={12}>
@@ -156,7 +156,7 @@ function SmsDrawer({ open, data, onClose, onSaved }) {
           </Col>
           <Col xs={24} sm={12}>
             <Form.Item name="eskiz_from" label="Jo'natuvchi nomi"
-                       extra={`Bo'sh bo'lsa "${data.sms_sender}". "Narel" nomi Eskiz'da ro'yxatdan o'tgach yoziladi`}>
+                       extra={`Bo'sh bo'lsa "${data.sms_sender}". "Rendershop" nomi Eskiz'da ro'yxatdan o'tgach yoziladi`}>
               <Input placeholder="4546" />
             </Form.Item>
           </Col>
@@ -168,8 +168,8 @@ function SmsDrawer({ open, data, onClose, onSaved }) {
           </Col>
         </Row>
         <Form.Item name="sms_otp_domain" label="Kodni avtomatik to'ldirish (Android)"
-                   extra="Sayt domeni, masalan narel.uz. SMS oxiriga maxsus qator qo'shiladi va Android'da kod maydonga o'zi tushadi. Bo'sh — o'chiq.">
-          <Input placeholder="narel.uz" />
+                   extra="Sayt domeni, masalan rendershop.uz. SMS oxiriga maxsus qator qo'shiladi va Android'da kod maydonga o'zi tushadi. Bo'sh — o'chiq.">
+          <Input placeholder="rendershop.uz" />
         </Form.Item>
       </Form>
 

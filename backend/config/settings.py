@@ -135,7 +135,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "config" / "static"]  # Narel logosi (Django admin)
+STATICFILES_DIRS = [BASE_DIR / "config" / "static"]  # Rendershop logosi (Django admin)
 
 from .jazzmin import JAZZMIN_SETTINGS, JAZZMIN_UI_TWEAKS  # noqa: E402,F401
 MEDIA_URL = "media/"
@@ -166,9 +166,9 @@ REST_FRAMEWORK = {
 
 # Swagger (/api/docs/). DEBUG'da hamma uchun ochiq, serverda — faqat /admin/ ga kirgan xodim
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Narel API",
+    "TITLE": "Rendershop API",
     "DESCRIPTION": (
-        "Narel internet-do'koni API'si. To'liq izohlar: docs/API.md. "
+        "Rendershop internet-do'koni API'si. To'liq izohlar: docs/API.md. "
         "Token olish: mijoz — /api/auth/code/send/ + /api/auth/code/verify/, xodim — /api/auth/login/. "
         "Keyin yuqoridagi **Authorize** tugmasiga `access` tokenni kiriting."
     ),
@@ -229,6 +229,6 @@ ESKIZ_PASSWORD = os.getenv("ESKIZ_PASSWORD", "").strip()
 ESKIZ_FROM = os.getenv("ESKIZ_FROM", "4546").strip()
 # Balans shu qiymatdan kam bo'lsa admin panel bosh sahifasida ogohlantirish chiqadi
 ESKIZ_LOW_BALANCE = int(os.getenv("ESKIZ_LOW_BALANCE", "20000") or 0)
-# Android Chrome kodni o'zi to'ldirishi uchun sayt domeni (masalan narel.uz). Bo'sh — o'chiq.
+# Android Chrome kodni o'zi to'ldirishi uchun sayt domeni (masalan rendershop.uz). Bo'sh — o'chiq.
 # Diqqat: domen qo'shilsa SMS matni o'zgaradi — Eskiz kabinetida yangi matnni ham moderatsiyadan o'tkazing.
 SMS_OTP_DOMAIN = os.getenv("SMS_OTP_DOMAIN", "").strip().removeprefix("https://").removeprefix("http://").strip("/")

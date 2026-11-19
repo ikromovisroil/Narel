@@ -25,7 +25,7 @@ export function StoreProvider({ children }) {
     setLangState(code)
   }
 
-  useEffect(() => { document.title = t('Narel — elektronika va maishiy texnika') }, [lang])
+  useEffect(() => { document.title = t('Rendershop — elektronika va maishiy texnika') }, [lang])
 
   // Admin Sozlamalarda yoqilgan to'lov usullari (nomlari joriy tilda)
   const [paymentMethods, setPaymentMethods] = useState([])

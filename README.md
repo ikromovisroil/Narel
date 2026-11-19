@@ -1,4 +1,4 @@
-# Narel
+# Rendershop
 
 Elektronika va maishiy texnika onlayn do'koni: Django REST API + React (Vite) + PostgreSQL.
 
@@ -76,10 +76,10 @@ Kirish va ro'yxatdan o'tish sahifalarida "Google bilan davom etish" tugmasi bor.
 `GOOGLE_CLIENT_ID` to'ldirilgandan keyin ko'rinadi.
 
 1. [Google Cloud Console](https://console.cloud.google.com/) da loyiha yarating (yoki mavjudini tanlang).
-2. **APIs & Services → OAuth consent screen**: "External", ilova nomi (Narel), email — saqlang.
+2. **APIs & Services → OAuth consent screen**: "External", ilova nomi (Rendershop), email — saqlang.
 3. **APIs & Services → Credentials → Create credentials → OAuth client ID**, turi **Web application**.
 4. **Authorized JavaScript origins** ga do'kon manzilini qo'shing: `http://localhost:5173`
-   (serverga chiqarganda haqiqiy domen ham, masalan `https://narel.uz`). Redirect URI kerak emas.
+   (serverga chiqarganda haqiqiy domen ham, masalan `https://rendershop.uz`). Redirect URI kerak emas.
 5. Hosil bo'lgan **Client ID** ni (`....apps.googleusercontent.com`) `backend/.env` ga yozing:
    `GOOGLE_CLIENT_ID=....apps.googleusercontent.com` va backendni qayta ishga tushiring.
 
@@ -94,7 +94,7 @@ yoki Google orqali. Login va parol faqat xodimlar (admin panel) uchun.
 
 - **SMS (Eskiz.uz)**: `backend/.env` da `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`, `ESKIZ_FROM`. Bo'sh bo'lsa va `DEBUG=True` —
   test rejimi: SMS yuborilmaydi, kod server konsolida va kirish oynasida ko'rinadi. `DEBUG=False` da SMS sozlanmasa kod yuborilmaydi.
-  Eskiz'da SMS matni shabloni tasdiqlangan bo'lishi kerak: `Narel: kirish kodi {kod}. Hech kimga bermang.`
+  Eskiz'da SMS matni shabloni tasdiqlangan bo'lishi kerak: `Rendershop: kirish kodi {kod}. Hech kimga bermang.`
 - **Cheklovlar**: kod 2 daqiqa amal qiladi, qayta yuborish 60 soniyadan keyin, 5 ta xato urinishdan keyin kod bekor,
   bir raqamga kuniga 10 ta SMS.
 - **Ommaviy oferta**: matni admin -> Sozlamalar -> "Ommaviy oferta" da; saytda `/oferta`.
