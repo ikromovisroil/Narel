@@ -135,7 +135,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "config" / "static"]  # Rendershop logosi (Django admin)
+STATICFILES_DIRS = [BASE_DIR / "config" / "static"]  # Rendershop logosi (Django admin): static/rendershop/
 
 from .jazzmin import JAZZMIN_SETTINGS, JAZZMIN_UI_TWEAKS  # noqa: E402,F401
 MEDIA_URL = "media/"
