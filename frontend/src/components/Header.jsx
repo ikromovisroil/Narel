@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import Logo from './Logo'
 import { LANGS, t } from '../i18n'
@@ -47,6 +47,26 @@ export default function Header() {
   const [active, setActive] = useState(null)
   const [q, setQ] = useState('')
   const navigate = useNavigate()
+  const location = useLocation()
+  const megaRef = useRef(null)
+  const catalogBtnRef = useRef(null)
+
+  // Katalog menyusi: boshqa sahifaga o'tilganda, menyudan tashqariga bosilganda yoki Esc bosilganda yopiladi
+  useEffect(() => { setMenuOpen(false) }, [location.pathname, location.search])
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDown = e => {
+      if (megaRef.current?.contains(e.target) || catalogBtnRef.current?.contains(e.target)) return
+      setMenuOpen(false)
+    }
+    const onKey = e => { if (e.key === 'Escape') setMenuOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
 
   useEffect(() => {
     api('/categories/', { auth: false }).then(c => { setCategories(c); setActive(c[0]?.id) }).catch(() => {})
@@ -77,7 +97,7 @@ export default function Header() {
       <div className="container header-main">
         <Logo />
 
-        <button className="btn btn-catalog" onClick={() => setMenuOpen(o => !o)}>
+        <button ref={catalogBtnRef} className="btn btn-catalog" onClick={() => setMenuOpen(o => !o)}>
           {menuOpen ? '✕' : '☰'} <span className="label">{t('Katalog')}</span>
         </button>
 
@@ -116,7 +136,7 @@ export default function Header() {
 
       {menuOpen && (
         <div className="mega" onClick={() => setMenuOpen(false)}>
-          <div className="container mega-inner" onClick={e => e.stopPropagation()}>
+          <div ref={megaRef} className="container mega-inner" onClick={e => e.stopPropagation()}>
             <ul className="mega-left">
               {categories.map(c => (
                 <li key={c.id} className={c.id === active ? 'active' : ''}
