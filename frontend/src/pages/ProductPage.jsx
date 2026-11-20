@@ -7,6 +7,7 @@ import { HeartIcon } from '../components/Icons'
 import { ProductImage } from '../components/ProductCard'
 import { pickupWhere } from '../components/StoreInfo'
 import { t } from '../i18n'
+import { absUrl, useSeo } from '../seo'
 import { useStore } from '../store'
 
 export default function ProductPage() {
@@ -28,6 +29,31 @@ export default function ProductPage() {
     window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' })
   }
   const [commentSummary, setCommentSummary] = useState(null)
+  useSeo(p && {
+    title: p.name,
+    description: p.description || `${p.name} — ${p.category.name}${p.brand ? `, ${p.brand.name}` : ''}. `
+      + `Narxi ${formatPrice(p.price)}. Rendershop'da sotib oling.`,
+    image: p.image || p.images[0]?.image,
+    path: `/product/${p.slug}`,
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: p.name,
+      ...(p.sku && { sku: p.sku }),
+      ...(p.description && { description: p.description.slice(0, 5000) }),
+      image: [p.image, ...p.images.map(i => i.image)].filter(Boolean).map(absUrl),
+      ...(p.brand && { brand: { '@type': 'Brand', name: p.brand.name } }),
+      category: p.category.name,
+      offers: {
+        '@type': 'Offer',
+        url: absUrl(`/product/${p.slug}`),
+        priceCurrency: 'UZS',
+        price: String(p.price),
+        availability: p.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        itemCondition: 'https://schema.org/NewCondition',
+      },
+    },
+  })
 
   useEffect(() => {
     setP(null); setError(false)

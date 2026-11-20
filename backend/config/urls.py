@@ -8,6 +8,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from catalog.seo import robots_txt, sitemap_xml
 from catalog.views import BannerViewSet, BrandViewSet, CategoryViewSet, ProductViewSet
 from orders.views import MeView, OrderViewSet
 from orders.account import (
@@ -60,6 +61,8 @@ api_patterns = [
 ]
 
 urlpatterns = [
+    path("robots.txt", robots_txt),
+    path("sitemap.xml", sitemap_xml),
     path(settings.DJANGO_ADMIN_URL, admin.site.urls),
     path("api/v1/", include(api_patterns)),
     path("api/", include(api_patterns)),

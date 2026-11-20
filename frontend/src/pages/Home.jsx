@@ -4,6 +4,7 @@ import { api } from '../api'
 import ProductCard from '../components/ProductCard'
 import { pickupWhere } from '../components/StoreInfo'
 import { t } from '../i18n'
+import { SITE_NAME, useSeo } from '../seo'
 import { useStore } from '../store'
 
 function BannerSlider({ banners }) {
@@ -99,6 +100,20 @@ export default function Home() {
     api('/categories/', { auth: false }).then(setCategories).catch(() => {})
     api('/brands/', { auth: false }).then(setBrands).catch(() => {})
   }, [])
+  useSeo({
+    path: '/',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: SITE_NAME,
+      url: window.location.origin + '/',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: window.location.origin + '/catalog?search={search_term_string}',
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  })
 
   return (
     <>

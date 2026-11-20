@@ -74,3 +74,30 @@ class SimilarProductsTests(APITestCase):
         # Avval shu kategoriya (shu brend oldin), keyin ota kategoriya
         self.assertEqual(names, ["a56", "iphone", "watch"])
         self.assertNotIn(current.slug, names)
+
+
+class SeoTests(APITestCase):
+    def test_robots_and_sitemap(self):
+        from django.utils import timezone
+        cat = Category.objects.create(name="Noutbuklar", slug="noutbuklar")
+        gone = Category.objects.create(name="Eski", slug="eski", deleted_at=timezone.now())
+        Product.objects.create(name="A", slug="bor-mahsulot", category=cat, price=1, stock=1)
+        Product.objects.create(name="B", slug="nofaol", category=cat, price=1, is_active=False)
+        Product.objects.create(name="C", slug="ochirilgan", category=cat, price=1, deleted_at=timezone.now())
+        Product.objects.create(name="D", slug="ochirilgan-kat", category=gone, price=1)
+
+        r = self.client.get("/robots.txt")
+        self.assertEqual(r.status_code, 200)
+        body = r.content.decode()
+        self.assertIn("Sitemap: http://testserver/sitemap.xml", body)
+        self.assertIn("Disallow: /seller/", body)
+        self.assertNotIn("Disallow: /api", body)  # Google sahifani chizishda API dan ma'lumot oladi
+
+        r = self.client.get("/sitemap.xml")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r["Content-Type"], "application/xml; charset=utf-8")
+        xml = r.content.decode()
+        self.assertIn("<loc>http://testserver/catalog/noutbuklar</loc>", xml)
+        self.assertIn("<loc>http://testserver/product/bor-mahsulot</loc>", xml)
+        for hidden in ("nofaol", "ochirilgan", "ochirilgan-kat", "catalog/eski"):
+            self.assertNotIn(hidden + "<", xml)

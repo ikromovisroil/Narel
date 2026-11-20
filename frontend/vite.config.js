@@ -8,6 +8,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://127.0.0.1:8010',
       '/media': 'http://127.0.0.1:8010',
+      '/robots.txt': 'http://127.0.0.1:8010',
+      '/sitemap.xml': 'http://127.0.0.1:8010',
     },
   },
 })

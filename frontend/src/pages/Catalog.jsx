@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import ProductCard from '../components/ProductCard'
 import { t } from '../i18n'
+import { useSeo } from '../seo'
 
 const SORTS = [
   ['-created_at', 'Avval yangilari'],
@@ -52,6 +53,16 @@ export default function Catalog() {
   const title = category?.name || (params.get('search') ? t("\"{q}\" bo'yicha qidiruv", { q: params.get('search') })
     : params.get('discount') ? t('Chegirmalar') : params.get('is_hit') ? t('Xit savdo')
     : params.get('is_new') ? t('Yangi mahsulotlar') : t('Barcha mahsulotlar'))
+
+  const filtered = ['search', 'discount', 'is_hit', 'is_new', 'brand', 'price_min', 'price_max'].some(k => params.get(k))
+  useSeo(slug && !category ? null : {
+    title,
+    description: category
+      ? `${category.name}: narxlar, xususiyatlar va sotuvda bor mahsulotlar. Rendershop'da qulay narxda sotib oling.`
+      : "Rendershop katalogi: elektronika va maishiy texnika — narxlar, xususiyatlar, yetkazib berish.",
+    path: slug ? `/catalog/${slug}` : '/catalog',
+    noindex: filtered,  // qidiruv va filtr natijalari alohida sahifa sifatida indekslanmaydi
+  })
 
   return (
     <div>

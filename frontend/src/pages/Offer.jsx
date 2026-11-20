@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { dateLocale, t } from '../i18n'
 import { useStore } from '../store'
+import { useSeo } from '../seo'
 
 // Matnni bo'limlarga ajratadi: "# " bilan boshlangan qator — sarlavha, qolganlari — xatboshilar
 function parse(text) {
@@ -20,6 +21,7 @@ function parse(text) {
 export default function Offer() {
   const { lang } = useStore()
   const [data, setData] = useState(null)
+  useSeo({ title: 'Ommaviy oferta', path: '/oferta' })
 
   useEffect(() => { api('/offer/', { auth: false }).then(setData).catch(() => setData({ text: '' })) }, [lang])
 

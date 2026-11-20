@@ -71,6 +71,19 @@ server {
         proxy_read_timeout 60s;
     }
 
+    # ---- Qidiruv tizimlari uchun: Django bazadan yig'adi ----
+    location = /robots.txt {
+        proxy_pass http://django;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /sitemap.xml {
+        proxy_pass http://django;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location /${DJANGO_ADMIN_URL}/ {
         proxy_pass http://django;
         proxy_set_header Host $host;
